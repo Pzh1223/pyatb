@@ -32,6 +32,10 @@
 
   [stru_file](#stru_file-pdos_stru_file) | [e_range](#e_range-pdos_e_range) | [de](#de-pdos_de) | [sigma](#sigma-pdos_sigma) | [kpoint_mode](#kpoint_mode-pdos_kpoint_mode)
 
+- [COHP](#cohp)
+
+  [stru_file](#stru_file-cohp_stru_file) | [atom_i_index](#atom_i_index-cohp_atom_i_index) | [atom_j_index](#atom_j_index-cohp_atom_j_index) | [atom_i_orbs](#atom_i_orbs-cohp_atom_i_orbs) | [atom_j_orbs](#atom_j_orbs-cohp_atom_j_orbs) | [method](#method-cohp_method) | [spin](#spin-cohp_spin) | [e_range](#e_range-cohp_e_range) | [de](#de-cohp_de) | [sigma](#sigma-cohp_sigma) | [kpoint_mode](#kpoint_mode-cohp_kpoint_mode)
+
 - [FAT_BAND](#fat_band)
 
   [band_range](#band_range-fatband_band_range) | [stru_file](#stru_file-fatband_stru_file) | [kpoint_mode](#kpoint_mode-fatband_kpoint_mode)

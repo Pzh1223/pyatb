@@ -12,6 +12,7 @@ Functions
    fermi_surface
    find_nodes
    pdos
+   cohp
    fat_band
    spin_texture
    wilson_loop
