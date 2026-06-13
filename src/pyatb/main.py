@@ -125,6 +125,14 @@ def main():
             fermi_energy = input_parameters['fermi_energy']
             cal_FAT.print_plot_script(fermi_energy)
 
+    if function_switch['COHP']:
+        cohp_parameters = INPUT['COHP']
+        cal_COHP = COHP(m_tb)
+        fermi_energy = input_parameters['fermi_energy']
+        cal_COHP.calculate_cohp(fermi_energy=fermi_energy, **cohp_parameters)
+        if RANK == 0:
+            cal_COHP.print_plot_script()
+
     if function_switch['FERMI_SURFACE']:
         fermi_surface_parameters = INPUT['FERMI_SURFACE']
         cal_FS = Fermi_Surface(m_tb)
