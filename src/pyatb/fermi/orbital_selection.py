@@ -182,7 +182,7 @@ def _shell_ranges(shell_counts, start):
 
 
 def build_orbital_map(stru_file, input_file=None, orbital_dir=None):
-    if orbital_dir is None:
+    if not orbital_dir:
         orbital_dir = parse_input_orbital_dir(input_file) if input_file else None
 
     atom_meta, orbital_files = parse_stru_metadata(stru_file)

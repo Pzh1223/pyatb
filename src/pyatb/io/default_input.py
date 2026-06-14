@@ -212,6 +212,8 @@ INPUT = {
         'invert'                      : [int, 1, 1],
         'shift_to_efermi'             : [int, 1, 1],
         'output_prefix'               : [str, 1, 'COHP'],
+        'input_file'                  : [str, 1, ''],
+        'orbital_dir'                 : [str, 1, ''],
         'kpoint_mode'                 : [str, 1, None]
     },
 

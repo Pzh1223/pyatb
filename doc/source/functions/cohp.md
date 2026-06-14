@@ -33,14 +33,25 @@ COHP
     invert            1
     shift_to_efermi   1
     output_prefix     COHP
+    input_file        Input
+    orbital_dir       basis
     kpoint_mode       mp
     mp_grid           8 8 8
 }
 ```
 
 `atom_i_orbs` and `atom_j_orbs` accept `all`, shell selectors such as `s`,
-`p`, `d`, `2p`, or comma/space separated global orbital indices. Atom indices
-are 1-based and follow the atom order in `STRU`.
+`p`, `d`, shell-like aliases such as `2s`, `2p`, `3d`, or comma/space
+separated global orbital indices. The numeric prefix is currently treated only
+as an angular-momentum alias: for example, `2p` is equivalent to `p`. It does
+not select a distinct radial shell. Atom indices are 1-based and follow the
+atom order in `STRU`.
+
+`orbital_dir` points to the directory containing ABACUS numerical orbital
+files. If `orbital_dir` is omitted, COHP tries to read `orbital_dir` from
+`input_file`; when the COHP block omits `input_file`, PyATB passes the running
+`Input` file path. If neither source gives an orbital directory, COHP falls
+back to the directory containing `STRU`.
 
 ## Output
 
@@ -50,7 +61,7 @@ The output directory is `Out/COHP`. The main spectrum is written to
 
 `COHP.meta.json` records the selected atoms, selected global orbital indices,
 orbital shell mapping and output file names. `plot_cohp.py` is generated in the
-same directory.
+same directory and can be run explicitly to create `cohp.pdf`.
 
 ## Notes
 

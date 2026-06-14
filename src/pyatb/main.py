@@ -10,6 +10,14 @@ from pyatb.berry import *
 from pyatb.transport import *
 import os
 
+
+def _cohp_parameters_with_default_input(cohp_parameters, input_path):
+    parameters = dict(cohp_parameters)
+    if not parameters.get("input_file"):
+        parameters["input_file"] = os.path.join(input_path, "Input")
+    return parameters
+
+
 def main():
     # get user INPUT
     INPUT, function_switch, bool_need_rR = read_input(os.path.join(INPUT_PATH, 'Input'))
@@ -126,7 +134,7 @@ def main():
             cal_FAT.print_plot_script(fermi_energy)
 
     if function_switch['COHP']:
-        cohp_parameters = INPUT['COHP']
+        cohp_parameters = _cohp_parameters_with_default_input(INPUT['COHP'], INPUT_PATH)
         cal_COHP = COHP(m_tb)
         fermi_energy = input_parameters['fermi_energy']
         cal_COHP.calculate_cohp(fermi_energy=fermi_energy, **cohp_parameters)

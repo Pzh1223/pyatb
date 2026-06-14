@@ -128,6 +128,11 @@ class COHP:
             return solver.get_Sk(kpoints)
         raise ValueError("COHP method must be COHP or COOP")
 
+    def _spin_degeneracy_factor(self, spin):
+        if self.nspin == 1 and spin.lower() == "sum":
+            return 2.0
+        return 1.0
+
     def calculate_cohp(self, fermi_energy, stru_file, atom_i_index, atom_j_index,
                        atom_i_orbs="all", atom_j_orbs="all", method="COHP", spin="sum",
                        e_range=None, de=0.05, sigma=0.15, invert=1, shift_to_efermi=1,
@@ -197,7 +202,7 @@ class COHP:
         spectrum = COMM.reduce(spectrum, root=0, op=op_sum)
 
         if RANK == 0:
-            spectrum = spectrum / self.__k_generator.total_kpoint_num
+            spectrum = spectrum / self.__k_generator.total_kpoint_num * self._spin_degeneracy_factor(spin)
             energy_grid = np.array([energy_min + i * de for i in range(e_num)], dtype=float)
             if shift_to_efermi:
                 output_energy = energy_grid - fermi_energy
@@ -285,12 +290,3 @@ plt.savefig(os.path.join(work_path, "cohp.pdf"))
 plt.close("all")
 """
             f.write(plot_script)
-
-        try:
-            import subprocess
-            import sys
-            script_directory = os.path.dirname(script_path)
-            subprocess.run([sys.executable, script_path], cwd=script_directory, capture_output=True, text=True)
-        except ImportError:
-            print("ImportError: COHP Plot requires matplotlib package!")
-            return None

@@ -1,5 +1,6 @@
 from pyatb.io.default_input import INPUT, function_switch, need_rR_matrix
 from pyatb.io.input import get_general_parameter
+from pyatb.main import _cohp_parameters_with_default_input
 
 
 def test_cohp_input_block_is_registered_without_rr_requirement():
@@ -11,7 +12,26 @@ def test_cohp_input_block_is_registered_without_rr_requirement():
     assert cohp["stru_file"][-1] is None
     assert cohp["method"][-1] == "COHP"
     assert cohp["spin"][-1] == "sum"
+    assert cohp["input_file"][-1] == ""
+    assert cohp["orbital_dir"][-1] == ""
     assert cohp["kpoint_mode"][-1] is None
+
+
+def test_cohp_main_defaults_input_file_to_input_path(tmp_path):
+    parameters = {"stru_file": "STRU", "input_file": ""}
+
+    result = _cohp_parameters_with_default_input(parameters, str(tmp_path))
+
+    assert result == {"stru_file": "STRU", "input_file": str(tmp_path / "Input")}
+    assert parameters == {"stru_file": "STRU", "input_file": ""}
+
+
+def test_cohp_main_keeps_explicit_input_file(tmp_path):
+    parameters = {"stru_file": "STRU", "input_file": "custom/INPUT"}
+
+    result = _cohp_parameters_with_default_input(parameters, str(tmp_path))
+
+    assert result["input_file"] == "custom/INPUT"
 
 
 def test_variable_length_orbital_selector_stops_at_next_known_parameter():
