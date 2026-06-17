@@ -4,6 +4,7 @@ from pyatb.fermi.bandunfolding_spin_texture import Bandunfolding_Spin_Texture
 from pyatb.fermi.fermi_energy import Fermi_Energy
 from pyatb.fermi.fermi_surface import Fermi_Surface
 from pyatb.fermi.find_nodes import Find_Nodes
+from pyatb.fermi.cohp import COHP
 from pyatb.fermi.jdos import JDOS
 from pyatb.fermi.pdos import PDOS
 from pyatb.fermi.spin_texture import Spin_Texture

@@ -32,6 +32,10 @@
 
   [stru_file](#stru_file-pdos_stru_file) | [e_range](#e_range-pdos_e_range) | [de](#de-pdos_de) | [sigma](#sigma-pdos_sigma) | [kpoint_mode](#kpoint_mode-pdos_kpoint_mode)
 
+- [COHP](#cohp)
+
+  [stru_file](#stru_file-cohp_stru_file) | [atom_i_index](#atom_i_index-cohp_atom_i_index) | [atom_j_index](#atom_j_index-cohp_atom_j_index) | [atom_i_orbs](#atom_i_orbs-cohp_atom_i_orbs) | [atom_j_orbs](#atom_j_orbs-cohp_atom_j_orbs) | [method](#method-cohp_method) | [spin](#spin-cohp_spin) | [e_range](#e_range-cohp_e_range) | [de](#de-cohp_de) | [sigma](#sigma-cohp_sigma) | [invert](#invert-cohp_invert) | [shift_to_efermi](#shift_to_efermi-cohp_shift_to_efermi) | [output_prefix](#output_prefix-cohp_output_prefix) | [input_file](#input_file-cohp_input_file) | [orbital_dir](#orbital_dir-cohp_orbital_dir) | [kpoint_mode](#kpoint_mode-cohp_kpoint_mode)
+
 - [FAT_BAND](#fat_band)
 
   [band_range](#band_range-fatband_band_range) | [stru_file](#stru_file-fatband_stru_file) | [kpoint_mode](#kpoint_mode-fatband_kpoint_mode)
@@ -420,6 +424,104 @@
 - **Default**: 0.001
 
 ### kpoint_mode {#pdos_kpoint_mode}
+
+- **Type**: String
+- **Description**: Used to set the k point. See [Setting of k points](#setting-of-k-points)
+- **Default**: No default value
+
+## COHP
+
+### stru_file {#cohp_stru_file}
+
+- **Type**: String
+- **Description**: ABACUS `STRU` file used to resolve atom order and numerical orbital files.
+- **Default**: No default value
+
+### atom_i_index {#cohp_atom_i_index}
+
+- **Type**: Integer
+- **Description**: First atom index in the ABACUS `STRU` atom order. Indices are 1-based.
+- **Default**: -1
+
+### atom_j_index {#cohp_atom_j_index}
+
+- **Type**: Integer
+- **Description**: Second atom index in the ABACUS `STRU` atom order. Indices are 1-based.
+- **Default**: -1
+
+### atom_i_orbs {#cohp_atom_i_orbs}
+
+- **Type**: String
+- **Description**: Orbital selector for `atom_i_index`. Accepts `all`, angular-momentum selectors such as `s`, `p`, `d`, shell-like aliases such as `2p`, or global orbital indices separated by spaces or commas.
+- **Default**: all
+
+### atom_j_orbs {#cohp_atom_j_orbs}
+
+- **Type**: String
+- **Description**: Orbital selector for `atom_j_index`. The syntax is the same as `atom_i_orbs`.
+- **Default**: all
+
+### method {#cohp_method}
+
+- **Type**: String
+- **Description**: Population method. `COHP` uses the Hamiltonian matrix and `COOP` uses the overlap matrix.
+- **Default**: COHP
+
+### spin {#cohp_spin}
+
+- **Type**: String
+- **Description**: Spin channel to output. Use `sum`, `up`, or `down`; `up` and `down` require `nspin = 2`.
+- **Default**: sum
+
+### e_range {#cohp_e_range}
+
+- **Type**: Real
+- **Description**: Energy range in eV before optional Fermi-energy shifting. Provide start and end values.
+- **Default**: `fermi_energy - 10.0` to `fermi_energy + 10.0`
+
+### de {#cohp_de}
+
+- **Type**: Real
+- **Description**: Energy-grid spacing in eV.
+- **Default**: 0.05
+
+### sigma {#cohp_sigma}
+
+- **Type**: Real
+- **Description**: Gaussian smearing width in eV.
+- **Default**: 0.15
+
+### invert {#cohp_invert}
+
+- **Type**: Boolean
+- **Description**: When set to `1`, multiply the population by `-1` so bonding contributions are positive in the common `-COHP` convention.
+- **Default**: 1
+
+### shift_to_efermi {#cohp_shift_to_efermi}
+
+- **Type**: Boolean
+- **Description**: When set to `1`, write output energies as `E - E_F`.
+- **Default**: 1
+
+### output_prefix {#cohp_output_prefix}
+
+- **Type**: String
+- **Description**: Prefix for the COHP data and metadata files written under `Out/COHP`.
+- **Default**: COHP
+
+### input_file {#cohp_input_file}
+
+- **Type**: String
+- **Description**: ABACUS `INPUT` file used to discover `orbital_dir` when `orbital_dir` is not set explicitly. If omitted, PyATB uses the running `Input` file path.
+- **Default**: Omitted
+
+### orbital_dir {#cohp_orbital_dir}
+
+- **Type**: String
+- **Description**: Directory containing ABACUS numerical orbital files. This value has priority over `orbital_dir` parsed from `input_file`; if neither is available, the `STRU` directory is used.
+- **Default**: Omitted
+
+### kpoint_mode {#cohp_kpoint_mode}
 
 - **Type**: String
 - **Description**: Used to set the k point. See [Setting of k points](#setting-of-k-points)

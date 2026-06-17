@@ -70,7 +70,7 @@ def get_block_data(block_name: str, file_block: dict):
         else:
             raise ValueError(block_name + ' is empty!')
 
-def get_general_parameter(parameter_name: str, default: None, data: None):
+def get_general_parameter(parameter_name: str, default: None, data: None, parameter_names=None):
     """ 
     Extract information with the parameter_name from data.
 
@@ -83,6 +83,18 @@ def get_general_parameter(parameter_name: str, default: None, data: None):
         if value == parameter_name:
             if default[1] == 1:
                 return default[0](data[index+1])
+            elif default[1] == -1:
+                values = []
+                known = set(parameter_names or [])
+                for token in data[index + 1:]:
+                    if token in known:
+                        break
+                    values.append(default[0](token))
+                if not values:
+                    if default[2] is None:
+                        raise KeyError('key parameter missing: ' + parameter_name)
+                    return default[2]
+                return ','.join(values)
             else:
                 tem = []
                 for i_size in range(default[1]):
@@ -132,7 +144,9 @@ def update_INPUT(input_filename):
             # search optional parameters
             for i in parameter_options.keys():
                 if i in block_parameters.keys():
-                    block_parameters[i][-1] = get_general_parameter(i, block_parameters[i], block_data)
+                    block_parameters[i][-1] = get_general_parameter(
+                        i, block_parameters[i], block_data, block_parameters.keys()
+                    )
                     option = block_parameters[i][-1]
                     option_dict = copy.deepcopy(parameter_options[i][option])
                     block_parameters.update(option_dict)
@@ -140,7 +154,9 @@ def update_INPUT(input_filename):
             # search general parameters
             for i in block_parameters.keys():
                 if i not in parameter_multigroups and i not in parameter_dependence:
-                    block_parameters[i][-1] = get_general_parameter(i, block_parameters[i], block_data)
+                    block_parameters[i][-1] = get_general_parameter(
+                        i, block_parameters[i], block_data, block_parameters.keys()
+                    )
 
             # search multigroups parameters
             for i in parameter_multigroups.keys():
@@ -157,7 +173,9 @@ def update_INPUT(input_filename):
                         tem_list.append(block_parameters[tem_value][-1])
                     tem_fun = parameter_dependence[i][1]
                     block_parameters[i] = tem_fun(*tem_list)
-                    block_parameters[i][-1] = get_general_parameter(i, block_parameters[i], block_data)
+                    block_parameters[i][-1] = get_general_parameter(
+                        i, block_parameters[i], block_data, block_parameters.keys()
+                    )
                     
 
     # rearrange the parameters in the dictionary INPUT

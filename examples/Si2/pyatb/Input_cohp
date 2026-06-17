@@ -1,0 +1,40 @@
+INPUT_PARAMETERS
+{
+    nspin               1
+    package             ABACUS
+    fermi_energy        6.389728305291531
+    fermi_energy_unit   eV
+    HR_route            data-HR-sparse_SPIN0.csr
+    SR_route            data-SR-sparse_SPIN0.csr
+    HR_unit             Ry
+    sparse_format       1
+}
+
+LATTICE
+{
+    lattice_constant        1.8897162
+    lattice_constant_unit   Bohr
+    lattice_vector
+    0.000000000000  2.715000000000  2.715000000000
+    2.715000000000  0.000000000000  2.715000000000
+    2.715000000000  2.715000000000  0.000000000000
+}
+
+COHP
+{
+    stru_file          STRU
+    atom_i_index      1
+    atom_j_index      2
+    atom_i_orbs       all
+    atom_j_orbs       all
+    method            COHP
+    spin              sum
+    e_range           -8.0 18.0
+    de                0.02
+    sigma             0.08
+    invert            1
+    shift_to_efermi   1
+    output_prefix     COHP
+    kpoint_mode       mp
+    mp_grid           4 4 4
+}

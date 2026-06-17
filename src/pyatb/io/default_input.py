@@ -13,6 +13,7 @@ function_switch = {
     'BANDUNFOLDING'           : False,
     'BANDUNFOLDING_SPIN_TEXTURE'           : False,
     'FAT_BAND'                : False,
+    'COHP'                    : False,
     'FERMI_ENERGY'            : False,
     'FERMI_SURFACE'           : False,
     'FIND_NODES'              : False,
@@ -193,6 +194,26 @@ INPUT = {
     {
         'band_range'                  : [int, 2, None],
         'stru_file'                   : [str, 1, None],
+        'kpoint_mode'                 : [str, 1, None]
+    },
+
+    'COHP' :
+    {
+        'stru_file'                   : [str, 1, None],
+        'atom_i_index'                : [int, 1, -1],
+        'atom_j_index'                : [int, 1, -1],
+        'atom_i_orbs'                 : [str, -1, 'all'],
+        'atom_j_orbs'                 : [str, -1, 'all'],
+        'method'                      : [str, 1, 'COHP'],
+        'spin'                        : [str, 1, 'sum'],
+        'e_range'                     : [float, 2, None],
+        'de'                          : [float, 1, 0.05],
+        'sigma'                       : [float, 1, 0.15],
+        'invert'                      : [int, 1, 1],
+        'shift_to_efermi'             : [int, 1, 1],
+        'output_prefix'               : [str, 1, 'COHP'],
+        'input_file'                  : [str, 1, ''],
+        'orbital_dir'                 : [str, 1, ''],
         'kpoint_mode'                 : [str, 1, None]
     },
 
