@@ -68,6 +68,32 @@ public:
         std::vector<VectorXd> &eigenvalues, 
         std::vector<MatrixXcd> &eigenvectors
     );
+
+    // ARPACK shift-invert solver: find nev eigenvalues of H*v = lambda*S*v
+    // closest to sigma (target energy, e.g. Fermi level).
+    // Returns false and falls back gracefully if ARPACK fails to converge.
+    static bool get_eigenvalues_arpack_1k(
+        base_data &Base_Data,
+        const VectorXcd &exp_ikR,
+        const int &nev,
+        const double &sigma,
+        const int &ncv,
+        const double &tol,
+        const int &maxiter,
+        VectorXd &eigenvalues
+    );
+
+    static bool get_eigenvalues_eigenvectors_arpack_1k(
+        base_data &Base_Data,
+        const VectorXcd &exp_ikR,
+        const int &nev,
+        const double &sigma,
+        const int &ncv,
+        const double &tol,
+        const int &maxiter,
+        VectorXd &eigenvalues,
+        MatrixXcd &eigenvectors
+    );
 };
 
 #endif

@@ -84,6 +84,14 @@ class Band_Structure:
 
         self.output_path = output_path
 
+        # ARPACK parameters (set later by calculate_band_structure)
+        self.__eigensolver   = 'lapack'
+        self.__arpack_nev    = 0
+        self.__arpack_ncv    = 0
+        self.__arpack_sigma  = 0.0
+        self.__arpack_tol    = 0.0
+        self.__arpack_maxiter = 300
+
         if RANK == 0:
             with open(RUNNING_LOG, 'a') as f:
                 f.write('\n')
@@ -187,16 +195,29 @@ class Band_Structure:
 
             for ispin in range(spin_loop):
                 if kpoint_num:
-                    if self.wf_collect:
-                        if self.cal_all_band:
-                            eigenvectors, eigenvalues = self.__tb_solver[ispin].diago_H(ik_process.k_direct_coor_local)
+                    if self.__eigensolver == 'arpack':
+                        nev     = self.__arpack_nev
+                        ncv     = self.__arpack_ncv
+                        sigma   = self.__arpack_sigma
+                        tol     = self.__arpack_tol
+                        maxiter = self.__arpack_maxiter
+                        if self.wf_collect:
+                            eigenvectors, eigenvalues = self.__tb_solver[ispin].diago_H_arpack(
+                                ik_process.k_direct_coor_local, nev, sigma, ncv, tol, maxiter)
                         else:
-                            eigenvectors, eigenvalues = self.__tb_solver[ispin].diago_H_range(ik_process.k_direct_coor_local, self.band_range[0], self.band_range[1])
+                            eigenvalues = self.__tb_solver[ispin].diago_H_eigenvaluesOnly_arpack(
+                                ik_process.k_direct_coor_local, nev, sigma, ncv, tol, maxiter)
                     else:
-                        if self.cal_all_band:
-                            eigenvalues = self.__tb_solver[ispin].diago_H_eigenvaluesOnly(ik_process.k_direct_coor_local)
+                        if self.wf_collect:
+                            if self.cal_all_band:
+                                eigenvectors, eigenvalues = self.__tb_solver[ispin].diago_H(ik_process.k_direct_coor_local)
+                            else:
+                                eigenvectors, eigenvalues = self.__tb_solver[ispin].diago_H_range(ik_process.k_direct_coor_local, self.band_range[0], self.band_range[1])
                         else:
-                            eigenvalues = self.__tb_solver[ispin].diago_H_eigenvaluesOnly_range(ik_process.k_direct_coor_local, self.band_range[0], self.band_range[1])
+                            if self.cal_all_band:
+                                eigenvalues = self.__tb_solver[ispin].diago_H_eigenvaluesOnly(ik_process.k_direct_coor_local)
+                            else:
+                                eigenvalues = self.__tb_solver[ispin].diago_H_eigenvaluesOnly_range(ik_process.k_direct_coor_local, self.band_range[0], self.band_range[1])
                 else:
                     eigenvalues = np.zeros([0, cal_band_num], dtype=float)
                     if self.wf_collect:
@@ -493,22 +514,40 @@ plt.close('all')
             o_file.write(f" CBM {i+1} (band index and k coor):" + 
                     f"{ik_ib[1]: 10.0f} {ik_ib[0][0]: 10.6f}{ik_ib[0][1]: 10.6f}{ik_ib[0][2]: 10.6f}\n")
 
-    def calculate_band_structure(self, fermi_energy, kpoint_mode, band_range, **kwarg):
+    def calculate_band_structure(self, fermi_energy, kpoint_mode, band_range,
+                                 eigensolver='lapack', arpack_nev=50, arpack_ncv=0,
+                                 arpack_tol=0.0, arpack_maxiter=300, **kwarg):
         COMM.Barrier()
 
         timer.start('band_structure', 'calculate band structure')
 
         self.fermi_energy = fermi_energy
-        
-        if band_range[0] == -1 and band_range[1] == -1:
-            self.band_range = np.array([1, self.__tb.basis_num], dtype=int)
-        else:
-            self.band_range = band_range
 
-        if self.band_range[0] == 1 and self.band_range[1] == self.__tb.basis_num:
-            self.cal_all_band = True
-        else:
+        # Store ARPACK parameters
+        self.__eigensolver = eigensolver.lower()
+        if self.__eigensolver == 'arpack':
+            nev = arpack_nev
+            if nev <= 0:
+                raise ValueError("arpack_nev must be a positive integer.")
+            ncv = arpack_ncv if arpack_ncv > 0 else max(2 * nev + 1, nev + 32)
+            self.__arpack_nev     = nev
+            self.__arpack_ncv     = ncv
+            self.__arpack_sigma   = fermi_energy
+            self.__arpack_tol     = arpack_tol
+            self.__arpack_maxiter = arpack_maxiter
+            # For ARPACK output array sizing: cal_band_num = nev
+            self.band_range = np.array([1, nev], dtype=int)
             self.cal_all_band = False
+        else:
+            if band_range[0] == -1 and band_range[1] == -1:
+                self.band_range = np.array([1, self.__tb.basis_num], dtype=int)
+            else:
+                self.band_range = band_range
+
+            if self.band_range[0] == 1 and self.band_range[1] == self.__tb.basis_num:
+                self.cal_all_band = True
+            else:
+                self.cal_all_band = False
 
         if kpoint_mode == 'mp':
             self.set_k_mp(**kwarg)

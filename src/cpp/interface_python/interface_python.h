@@ -211,6 +211,32 @@ public:
         py::array_t<double> &eigenvalues
     );
 
+    // ARPACK shift-invert solver: compute nev eigenvalues closest to sigma (Fermi energy).
+    // eigenvectors output shape: [kpoint_num, basis_num, nev_actual]
+    // eigenvalues  output shape: [kpoint_num, nev_actual]
+    // nev_actual may be < nev for k-points where ARPACK does not converge fully.
+    void diago_H_arpack(
+        const MatrixXd &k_direct_coor,
+        const int &nev,
+        const double &sigma,
+        const int &ncv,
+        const double &tol,
+        const int &maxiter,
+        py::array_t<std::complex<double>> &eigenvectors,
+        py::array_t<double> &eigenvalues
+    );
+
+    // Eigenvalue-only ARPACK variant.
+    void diago_H_eigenvaluesOnly_arpack(
+        const MatrixXd &k_direct_coor,
+        const int &nev,
+        const double &sigma,
+        const int &ncv,
+        const double &tol,
+        const int &maxiter,
+        py::array_t<double> &eigenvalues
+    );
+
     void get_total_berry_curvature_fermi(
         const MatrixXd &k_direct_coor,
         const double &fermi_energy,

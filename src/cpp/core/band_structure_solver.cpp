@@ -138,3 +138,40 @@ void band_structure_solver::get_eigenvalues_eigenvectors_range(
         tools::diagonalize_GeneralizedSelfAdjointMatrix_range_1k(Hk, Sk, lower_band_index, upper_band_index, eigenvectors[ik], eigenvalues[ik]);
     }
 }
+
+
+bool band_structure_solver::get_eigenvalues_arpack_1k(
+    base_data &Base_Data,
+    const VectorXcd &exp_ikR,
+    const int &nev,
+    const double &sigma,
+    const int &ncv,
+    const double &tol,
+    const int &maxiter,
+    VectorXd &eigenvalues
+)
+{
+    MatrixXcd Hk = xr_operation::get_Hk(Base_Data, exp_ikR);
+    MatrixXcd Sk = xr_operation::get_Sk(Base_Data, exp_ikR);
+    return tools::diagonalize_arpack_shift_invert_eigenvaluesOnly_1k(
+        Hk, Sk, nev, sigma, ncv, tol, maxiter, eigenvalues);
+}
+
+
+bool band_structure_solver::get_eigenvalues_eigenvectors_arpack_1k(
+    base_data &Base_Data,
+    const VectorXcd &exp_ikR,
+    const int &nev,
+    const double &sigma,
+    const int &ncv,
+    const double &tol,
+    const int &maxiter,
+    VectorXd &eigenvalues,
+    MatrixXcd &eigenvectors
+)
+{
+    MatrixXcd Hk = xr_operation::get_Hk(Base_Data, exp_ikR);
+    MatrixXcd Sk = xr_operation::get_Sk(Base_Data, exp_ikR);
+    return tools::diagonalize_arpack_shift_invert_1k(
+        Hk, Sk, nev, sigma, ncv, tol, maxiter, eigenvalues, eigenvectors);
+}

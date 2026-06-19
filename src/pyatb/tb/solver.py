@@ -167,6 +167,60 @@ class solver:
 
         return eigenvalues
 
+    def diago_H_arpack(self, k_direct_coor, nev, sigma, ncv=0, tol=0.0, maxiter=300):
+        """
+        ARPACK shift-invert eigensolver.  Finds the *nev* eigenvalues closest to
+        *sigma* (target energy, e.g. Fermi level) for each k-point.
+
+        Parameters
+        ----------
+        k_direct_coor : ndarray, shape (nk, 3)
+        nev           : int   – number of eigenvalues to compute
+        sigma         : float – shift (Fermi energy in eV)
+        ncv           : int   – Krylov subspace size (0 → auto: max(2*nev+1, nev+32))
+        tol           : float – convergence tolerance (0.0 = machine precision)
+        maxiter       : int   – maximum ARPACK iterations
+
+        Returns
+        -------
+        eigenvectors : ndarray, shape (nk, basis_num, nev), dtype complex
+        eigenvalues  : ndarray, shape (nk, nev),           dtype float
+        """
+        if nev <= 0:
+            raise ValueError("nev must be positive.")
+        if ncv == 0:
+            ncv = max(2 * nev + 1, nev + 32)
+
+        kpoint_num = k_direct_coor.shape[0]
+        eigenvectors = np.zeros([kpoint_num, self.basis_num, nev], dtype=complex)
+        eigenvalues  = np.zeros([kpoint_num, nev], dtype=float)
+        self.tb_solver.diago_H_arpack(
+            k_direct_coor, nev, sigma, ncv, tol, maxiter,
+            eigenvectors, eigenvalues)
+
+        return eigenvectors, eigenvalues
+
+    def diago_H_eigenvaluesOnly_arpack(self, k_direct_coor, nev, sigma, ncv=0, tol=0.0, maxiter=300):
+        """
+        Eigenvalue-only ARPACK variant.  Same parameters as diago_H_arpack.
+
+        Returns
+        -------
+        eigenvalues : ndarray, shape (nk, nev), dtype float
+        """
+        if nev <= 0:
+            raise ValueError("nev must be positive.")
+        if ncv == 0:
+            ncv = max(2 * nev + 1, nev + 32)
+
+        kpoint_num = k_direct_coor.shape[0]
+        eigenvalues = np.zeros([kpoint_num, nev], dtype=float)
+        self.tb_solver.diago_H_eigenvaluesOnly_arpack(
+            k_direct_coor, nev, sigma, ncv, tol, maxiter,
+            eigenvalues)
+
+        return eigenvalues
+
     def get_total_berry_curvature_fermi(self, k_direct_coor, fermi_energy, mode):
         kpoint_num = k_direct_coor.shape[0]
         total_berry_curvature = np.zeros([kpoint_num, 3], dtype=float)
