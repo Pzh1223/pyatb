@@ -810,8 +810,9 @@ void interface_python::diago_H_arpack(
     MatrixXcd exp_ikR = Base_Data.get_exp_ikR(k_direct_coor);
     int max_num_threads = omp_get_max_threads();
 
-    // ARPACK is not thread-safe for independent problems sharing no state,
-    // so we run a per-k-point independent instance with OMP parallelism.
+    // Each ARPACK reverse-communication loop maintains isolated state per k-point
+    // (separate workd/workl/resid buffers), so parallel k-point iterations are independent
+    // and safe to run concurrently with OpenMP.
     #pragma omp parallel for schedule(static) if(kpoint_num > max_num_threads)
     for (int ik = 0; ik < kpoint_num; ++ik)
     {

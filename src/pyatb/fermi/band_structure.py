@@ -535,7 +535,9 @@ plt.close('all')
             self.__arpack_sigma   = fermi_energy
             self.__arpack_tol     = arpack_tol
             self.__arpack_maxiter = arpack_maxiter
-            # For ARPACK output array sizing: cal_band_num = nev
+            # Repurpose band_range to match ARPACK output size so that get_band_structure
+            # allocates output arrays of shape [kpoint_num, nev].
+            # band_range = [1, nev] => cal_band_num = nev - 1 + 1 = nev.
             self.band_range = np.array([1, nev], dtype=int)
             self.cal_all_band = False
         else:

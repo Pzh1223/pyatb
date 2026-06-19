@@ -536,10 +536,12 @@ bool tools::diagonalize_arpack_shift_invert_1k(
     sorted.reserve(nout);
     for (int i = 0; i < nout; ++i)
     {
-        if (std::abs(d[i].imag()) > 1e-6 * std::abs(d[i].real()) + 1e-10)
+        double imag_threshold = 1e-6 * std::abs(d[i].real()) + 1e-10;
+        if (std::abs(d[i].imag()) > imag_threshold)
         {
             std::cerr << "tools: ARPACK eigenvalue " << i << " has non-negligible imaginary part "
-                      << d[i].imag() << " (Hermitian problem assumed).\n";
+                      << d[i].imag() << " (Hermitian problem requires real eigenvalues).\n";
+            return false;
         }
         sorted.push_back({d[i].real(), i});
     }
