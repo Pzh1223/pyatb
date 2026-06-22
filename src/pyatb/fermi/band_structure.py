@@ -84,7 +84,7 @@ class Band_Structure:
 
         self.output_path = output_path
 
-        self.__eigensolver = 'lapack'
+        self.__eigensolver = 'parpack'
         self.__iterative_nev = 0
         self.__iterative_ncv = 0
         self.__iterative_sigma = 0.0
@@ -530,15 +530,15 @@ plt.close('all')
         self,
         fermi_energy,
         band_range,
-        eigensolver='lapack',
+        eigensolver='parpack',
         arpack_nev=50,
         arpack_ncv=0,
         arpack_tol=0.0,
         arpack_maxiter=300,
-        parpack_nev=None,
-        parpack_ncv=None,
-        parpack_tol=None,
-        parpack_maxiter=None
+        parpack_nev=50,
+        parpack_ncv=0,
+        parpack_tol=0.0,
+        parpack_maxiter=300
     ):
         self.__eigensolver = eigensolver.lower()
         if self.__eigensolver not in ('lapack', 'arpack', 'parpack'):
@@ -568,10 +568,10 @@ plt.close('all')
             tol = arpack_tol
             maxiter = arpack_maxiter
         else:
-            nev = arpack_nev if parpack_nev is None else parpack_nev
-            ncv = arpack_ncv if parpack_ncv is None else parpack_ncv
-            tol = arpack_tol if parpack_tol is None else parpack_tol
-            maxiter = arpack_maxiter if parpack_maxiter is None else parpack_maxiter
+            nev = parpack_nev
+            ncv = parpack_ncv
+            tol = parpack_tol
+            maxiter = parpack_maxiter
             py2f = getattr(COMM, "py2f", None)
             if callable(py2f):
                 self.__iterative_comm_f = int(py2f())
@@ -594,10 +594,10 @@ plt.close('all')
         self.cal_all_band = False
 
     def calculate_band_structure(self, fermi_energy, kpoint_mode, band_range,
-                                 eigensolver='lapack', arpack_nev=50, arpack_ncv=0,
+                                 eigensolver='parpack', arpack_nev=50, arpack_ncv=0,
                                  arpack_tol=0.0, arpack_maxiter=300,
-                                 parpack_nev=None, parpack_ncv=None,
-                                 parpack_tol=None, parpack_maxiter=None, **kwarg):
+                                 parpack_nev=50, parpack_ncv=0,
+                                 parpack_tol=0.0, parpack_maxiter=300, **kwarg):
         COMM.Barrier()
 
         timer.start('band_structure', 'calculate band structure')

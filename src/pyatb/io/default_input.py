@@ -170,7 +170,7 @@ INPUT = {
         'wf_collect'                  : [int, 1, False],
         'band_range'                  : [int, 2, [-1, -1]],
         'kpoint_mode'                 : [str, 1, None],
-        'eigensolver'                 : [str, 1, 'lapack'],
+        'eigensolver'                 : [str, 1, 'parpack'],
         'arpack_nev'                  : [int, 1, 50],
         'arpack_ncv'                  : [int, 1, 0],
         'arpack_tol'                  : [float, 1, 0.0],

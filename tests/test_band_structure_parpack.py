@@ -9,7 +9,7 @@ from pyatb.tb.solver import solver
 def test_band_structure_registers_parpack_defaults():
     config = INPUT["BAND_STRUCTURE"]
 
-    assert config["eigensolver"][-1] == "lapack"
+    assert config["eigensolver"][-1] == "parpack"
     assert config["parpack_nev"][-1] == 50
     assert config["parpack_ncv"][-1] == 0
     assert config["parpack_tol"][-1] == 0.0
