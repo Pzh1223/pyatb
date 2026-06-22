@@ -11,6 +11,9 @@ import numpy as np
 import os
 import shutil
 import time
+from scipy.sparse.linalg import eigsh
+from scipy.linalg import eigh, eigvalsh
+from scipy.sparse import csr_matrix
 
 class Band_Structure:
     """
@@ -187,16 +190,52 @@ class Band_Structure:
 
             for ispin in range(spin_loop):
                 if kpoint_num:
-                    if self.wf_collect:
-                        if self.cal_all_band:
-                            eigenvectors, eigenvalues = self.__tb_solver[ispin].diago_H(ik_process.k_direct_coor_local)
-                        else:
-                            eigenvectors, eigenvalues = self.__tb_solver[ispin].diago_H_range(ik_process.k_direct_coor_local, self.band_range[0], self.band_range[1])
+                    if getattr(self, 'solver', 'dense') in ['parpack', 'sparse']:
+                        Hk_list = self.__tb_solver[ispin].get_Hk(ik_process.k_direct_coor_local)
+                        Sk_list = self.__tb_solver[ispin].get_Sk(ik_process.k_direct_coor_local)
+                        
+                        eigenvalues_list = []
+                        if self.wf_collect:
+                            eigenvectors_list = []
+                        
+                        for i_k in range(kpoint_num):
+                            Hk = Hk_list[i_k]
+                            Sk = Sk_list[i_k]
+                            # parpack (eigsh) cannot compute all eigenvalues. It requires k < N.
+                            # We set the limit to N-1 for safely using the sparse solver.
+                            if cal_band_num >= basis_num - 1:
+                                if self.wf_collect:
+                                    val, vec = eigh(Hk, b=Sk)
+                                    eigenvalues_list.append(val)
+                                    eigenvectors_list.append(vec)
+                                else:
+                                    val = eigvalsh(Hk, b=Sk)
+                                    eigenvalues_list.append(val)
+                            else:
+                                Hk_sparse = csr_matrix(Hk)
+                                Sk_sparse = csr_matrix(Sk)
+                                val, vec = eigsh(Hk_sparse, k=cal_band_num, M=Sk_sparse, sigma=self.fermi_energy, which='LM')
+                                idx = np.argsort(val)
+                                val = val[idx]
+                                vec = vec[:, idx]
+                                eigenvalues_list.append(val)
+                                if self.wf_collect:
+                                    eigenvectors_list.append(vec)
+                        
+                        eigenvalues = np.array(eigenvalues_list, dtype=float)
+                        if self.wf_collect:
+                            eigenvectors = np.array(eigenvectors_list, dtype=complex)
                     else:
-                        if self.cal_all_band:
-                            eigenvalues = self.__tb_solver[ispin].diago_H_eigenvaluesOnly(ik_process.k_direct_coor_local)
+                        if self.wf_collect:
+                            if self.cal_all_band:
+                                eigenvectors, eigenvalues = self.__tb_solver[ispin].diago_H(ik_process.k_direct_coor_local)
+                            else:
+                                eigenvectors, eigenvalues = self.__tb_solver[ispin].diago_H_range(ik_process.k_direct_coor_local, self.band_range[0], self.band_range[1])
                         else:
-                            eigenvalues = self.__tb_solver[ispin].diago_H_eigenvaluesOnly_range(ik_process.k_direct_coor_local, self.band_range[0], self.band_range[1])
+                            if self.cal_all_band:
+                                eigenvalues = self.__tb_solver[ispin].diago_H_eigenvaluesOnly(ik_process.k_direct_coor_local)
+                            else:
+                                eigenvalues = self.__tb_solver[ispin].diago_H_eigenvaluesOnly_range(ik_process.k_direct_coor_local, self.band_range[0], self.band_range[1])
                 else:
                     eigenvalues = np.zeros([0, cal_band_num], dtype=float)
                     if self.wf_collect:
@@ -493,12 +532,13 @@ plt.close('all')
             o_file.write(f" CBM {i+1} (band index and k coor):" + 
                     f"{ik_ib[1]: 10.0f} {ik_ib[0][0]: 10.6f}{ik_ib[0][1]: 10.6f}{ik_ib[0][2]: 10.6f}\n")
 
-    def calculate_band_structure(self, fermi_energy, kpoint_mode, band_range, **kwarg):
+    def calculate_band_structure(self, fermi_energy, kpoint_mode, band_range, solver='dense', **kwarg):
         COMM.Barrier()
 
         timer.start('band_structure', 'calculate band structure')
 
         self.fermi_energy = fermi_energy
+        self.solver = solver
         
         if band_range[0] == -1 and band_range[1] == -1:
             self.band_range = np.array([1, self.__tb.basis_num], dtype=int)
