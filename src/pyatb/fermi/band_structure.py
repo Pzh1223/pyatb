@@ -65,6 +65,7 @@ class Band_Structure:
 
         self.wf_collect = wf_collect
         self.nspin = tb.nspin
+        self.solver_name = 'dense'
         self.use_sparse_solver = False
         self.sparse_band_num = 0
 
@@ -525,8 +526,8 @@ plt.close('all')
         solver_key = str(solver).lower()
         if solver_key not in solver_aliases:
             raise ValueError("solver must be 'dense', 'parpack', or the compatibility alias 'sparse'.")
-        normalized_solver = solver_aliases[solver_key]
-        self.use_sparse_solver = normalized_solver == 'parpack'
+        self.solver_name = solver_aliases[solver_key]
+        self.use_sparse_solver = self.solver_name == 'parpack'
         self.sparse_band_num = 0
 
         if band_range[0] == -1 and band_range[1] == -1:
@@ -537,8 +538,8 @@ plt.close('all')
         if self.use_sparse_solver:
             if not isinstance(fermi_band_num, Integral):
                 raise ValueError(
-                    f'fermi_band_num must be an integer, got {fermi_band_num!r} '
-                    f'({type(fermi_band_num).__name__}).'
+                    f"fermi_band_num must be an integer, got {fermi_band_num!r} "
+                    f"({type(fermi_band_num).__name__})."
                 )
             self.sparse_band_num = fermi_band_num
             if not getattr(self.__tb, 'HSR_is_sparse', False):
@@ -560,7 +561,7 @@ plt.close('all')
 
         if RANK == 0:
             with open(RUNNING_LOG, 'a') as f:
-                f.write(' >> eigensolver : %s\n' % ('parpack' if self.use_sparse_solver else 'dense'))
+                f.write(' >> eigensolver : %s\n' % self.solver_name)
                 if self.use_sparse_solver:
                     f.write(' >> fermi_band_num : %d\n' % (self.sparse_band_num))
 

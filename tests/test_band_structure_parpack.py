@@ -57,8 +57,9 @@ def test_sparse_shift_invert_solver_matches_generalized_dense_reference(monkeypa
 
     np.testing.assert_allclose(eigenvalues[0], np.array([-0.2, 0.3]))
     np.testing.assert_allclose(eigenvalues_only[0], np.array([-0.2, 0.3]))
-    hk = tb_solver.get_Hk_sparse(np.array([0.0, 0.0, 0.0], dtype=float)).toarray()
-    sk = tb_solver.get_Sk_sparse(np.array([0.0, 0.0, 0.0], dtype=float)).toarray()
+    kpoint = np.array([0.0, 0.0, 0.0], dtype=float)
+    hk = tb_solver.get_Hk_sparse(kpoint).toarray()
+    sk = tb_solver.get_Sk_sparse(kpoint).toarray()
     for iband, eigenvalue in enumerate(eigenvalues[0]):
         vector = eigenvectors[0, :, iband]
         np.testing.assert_allclose(hk @ vector, eigenvalue * (sk @ vector), atol=1e-10)
