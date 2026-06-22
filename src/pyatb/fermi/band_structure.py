@@ -1,6 +1,7 @@
 """
 This function will not calculate very dense k points, such as more than 1,000,000 k points
 """
+from numbers import Integral
 import typing
 from pyatb import RANK, COMM, SIZE, OUTPUT_PATH, RUNNING_LOG, timer
 from pyatb.kpt import kpoint_generator
@@ -106,6 +107,9 @@ class Band_Structure:
         basis_num = self.__tb.basis_num
         if self.cal_all_band:
             return basis_num
+        return self.band_range[1] - self.band_range[0] + 1
+
+    def _get_band_range_width(self):
         return self.band_range[1] - self.band_range[0] + 1
 
     def set_k_mp(
@@ -516,7 +520,14 @@ plt.close('all')
         if solver not in ('dense', 'sparse'):
             raise ValueError("solver must be 'dense' or 'sparse'.")
         self.use_sparse_solver = solver == 'sparse'
+        if not isinstance(fermi_band_num, Integral):
+            raise ValueError('fermi_band_num must be an integer.')
         self.sparse_band_num = int(fermi_band_num)
+
+        if band_range[0] == -1 and band_range[1] == -1:
+            self.band_range = np.array([1, self.__tb.basis_num], dtype=int)
+        else:
+            self.band_range = band_range
 
         if self.use_sparse_solver:
             if not getattr(self.__tb, 'HSR_is_sparse', getattr(self.__tb, 'HSR_iSsparse', False)):
@@ -524,14 +535,9 @@ plt.close('all')
             if self.sparse_band_num <= 0:
                 if band_range[0] == -1 and band_range[1] == -1:
                     raise ValueError('fermi_band_num must be positive when using the sparse band solver.')
-                self.sparse_band_num = int(band_range[1] - band_range[0] + 1)
+                self.sparse_band_num = self._get_band_range_width()
             if self.sparse_band_num > self.__tb.basis_num:
                 raise ValueError('fermi_band_num cannot exceed basis_num.')
-        
-        if band_range[0] == -1 and band_range[1] == -1:
-            self.band_range = np.array([1, self.__tb.basis_num], dtype=int)
-        else:
-            self.band_range = band_range
 
         if not self.use_sparse_solver and self.band_range[0] == 1 and self.band_range[1] == self.__tb.basis_num:
             self.cal_all_band = True

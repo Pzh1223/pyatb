@@ -4,8 +4,7 @@ from scipy.sparse import coo_matrix
 from scipy.sparse.linalg import eigsh
 from pyatb.interface_python import interface_python as tb_solver_
 
-
-REAL_CLOSE_TOL = 1000
+IMAG_EIGENVALUE_TOL = 1e-8
 
 
 class solver:
@@ -225,6 +224,12 @@ class solver:
         eigenvectors = np.asarray(eigenvectors[:, order], dtype=complex)[:, sort_index]
         return eigenvectors, eigenvalues
 
+    def _as_real_eigenvalues(self, eigenvalues):
+        eigenvalues = np.asarray(eigenvalues)
+        if np.max(np.abs(np.imag(eigenvalues))) > IMAG_EIGENVALUE_TOL:
+            raise ValueError("Sparse solver returned eigenvalues with non-negligible imaginary parts.")
+        return np.asarray(np.real(eigenvalues), dtype=float)
+
     def _solve_sparse_near_sigma(self, Hk_sparse, Sk_sparse, sigma, band_num, return_vectors):
         if band_num <= 0:
             raise ValueError("band_num must be positive for sparse near-Fermi solving.")
@@ -254,13 +259,13 @@ class solver:
 
         if return_vectors:
             eigenvalues, eigenvectors = result
-            eigenvalues = np.real_if_close(eigenvalues, tol=REAL_CLOSE_TOL).astype(float)
+            eigenvalues = self._as_real_eigenvalues(eigenvalues)
             sort_index = np.argsort(eigenvalues)
             eigenvalues = eigenvalues[sort_index]
             eigenvectors = np.asarray(eigenvectors[:, sort_index], dtype=complex)
             return eigenvectors, eigenvalues
 
-        eigenvalues = np.real_if_close(result, tol=REAL_CLOSE_TOL).astype(float)
+        eigenvalues = self._as_real_eigenvalues(result)
         return np.sort(eigenvalues)
 
     def diago_H_near_fermi(self, k_direct_coor, fermi_energy, band_num):
