@@ -61,3 +61,21 @@ def test_sparse_shift_invert_solver_matches_generalized_dense_reference(monkeypa
     for iband, eigenvalue in enumerate(eigenvalues[0]):
         vector = eigenvectors[0, :, iband]
         np.testing.assert_allclose(hk @ vector, eigenvalue * (sk @ vector), atol=1e-10)
+
+
+def test_sparse_shift_invert_solver_handles_single_basis(monkeypatch):
+    monkeypatch.setattr(solver_module, "tb_solver_", _DummyInterfacePython)
+
+    tb_solver = solver_module.solver(1.0, np.eye(3))
+    r_direct_coor = np.array([[0, 0, 0]], dtype=int)
+    hr = _diagonal_triu_matrix([0.5])
+    sr = _diagonal_triu_matrix([2.0])
+    tb_solver.set_HSR_sparse(1, r_direct_coor, 1, hr, sr)
+
+    eigenvalues = tb_solver.diago_H_eigenvaluesOnly_near_fermi(
+        np.array([[0.0, 0.0, 0.0]], dtype=float),
+        fermi_energy=0.0,
+        band_num=1,
+    )
+
+    np.testing.assert_allclose(eigenvalues[0], np.array([0.25]))

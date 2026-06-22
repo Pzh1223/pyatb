@@ -5,6 +5,8 @@ from scipy.sparse.linalg import eigsh
 from pyatb.interface_python import interface_python as tb_solver_
 
 IMAG_EIGENVALUE_TOL = 1e-8
+MIN_SPARSE_BASIS = 4
+NEAR_FULL_BAND_MARGIN = 1
 
 
 class solver:
@@ -226,7 +228,7 @@ class solver:
 
     def _as_real_eigenvalues(self, eigenvalues):
         eigenvalues = np.asarray(eigenvalues)
-        if np.max(np.abs(np.imag(eigenvalues))) > IMAG_EIGENVALUE_TOL:
+        if np.abs(eigenvalues.imag).max(initial=0.0) > IMAG_EIGENVALUE_TOL:
             raise ValueError("Sparse solver returned eigenvalues with non-negligible imaginary parts.")
         return np.asarray(np.real(eigenvalues), dtype=float)
 
@@ -237,7 +239,10 @@ class solver:
             raise ValueError("band_num cannot exceed basis_num.")
 
         if self.basis_num == 1:
-            eigenvalues = np.array([Hk_sparse[0, 0].real / Sk_sparse[0, 0].real], dtype=float)
+            overlap = Sk_sparse[0, 0].real
+            if abs(overlap) <= IMAG_EIGENVALUE_TOL:
+                raise ValueError("Sparse solver requires a non-singular overlap matrix.")
+            eigenvalues = np.array([Hk_sparse[0, 0].real / overlap], dtype=float)
             if not return_vectors:
                 return eigenvalues
             return np.array([[1.0 + 0.0j]], dtype=complex), eigenvalues
@@ -245,7 +250,7 @@ class solver:
         if band_num >= self.basis_num:
             return self._dense_near_sigma(Hk_sparse, Sk_sparse, sigma, band_num, return_vectors)
 
-        if self.basis_num <= 3 or band_num >= self.basis_num - 1:
+        if self.basis_num < MIN_SPARSE_BASIS or band_num >= self.basis_num - NEAR_FULL_BAND_MARGIN:
             return self._dense_near_sigma(Hk_sparse, Sk_sparse, sigma, band_num, return_vectors)
 
         result = eigsh(
