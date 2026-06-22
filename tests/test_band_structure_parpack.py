@@ -1,6 +1,7 @@
 import numpy as np
 from scipy.sparse import csc_matrix
 
+import pyatb.fermi.band_structure as band_structure_module
 import pyatb.tb.solver as solver_module
 from pyatb.io.default_input import INPUT
 
@@ -79,3 +80,47 @@ def test_sparse_shift_invert_solver_handles_single_basis(monkeypatch):
     )
 
     np.testing.assert_allclose(eigenvalues[0], np.array([0.25]))
+
+
+class _SparseBandSolver:
+    def __init__(self):
+        self.calls = []
+
+    def diago_H_eigenvaluesOnly_near_fermi(self, kpoints, fermi_energy, band_num):
+        self.calls.append((kpoints.copy(), fermi_energy, band_num))
+        return np.zeros((kpoints.shape[0], band_num), dtype=float)
+
+
+class _FakeTB:
+    def __init__(self, solver):
+        self.nspin = 1
+        self.basis_num = 4
+        self.max_kpoint_num = 8
+        self.HSR_is_sparse = True
+        self.tb_solver = solver
+
+    def direct_to_cartesian_kspace(self, k_direct_coor):
+        return np.asarray(k_direct_coor, dtype=float)
+
+
+def test_band_structure_sparse_options_invoke_near_fermi_solver(tmp_path, monkeypatch):
+    solver = _SparseBandSolver()
+    tb = _FakeTB(solver)
+    monkeypatch.setattr(band_structure_module, "OUTPUT_PATH", str(tmp_path))
+    monkeypatch.setattr(band_structure_module, "RUNNING_LOG", str(tmp_path / "running.log"))
+
+    band = band_structure_module.Band_Structure(tb, wf_collect=False)
+    band.calculate_band_structure(
+        fermi_energy=0.0,
+        kpoint_mode="direct",
+        band_range=np.array([1, 2], dtype=int),
+        solver="sparse",
+        fermi_band_num=2,
+        kpoint_direct_coor=np.array([[0.0, 0.0, 0.0]], dtype=float),
+    )
+
+    assert len(solver.calls) == 1
+    _, fermi_energy, band_num = solver.calls[0]
+    assert fermi_energy == 0.0
+    assert band_num == 2
+    assert band.eig.shape == (1, 2)
