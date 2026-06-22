@@ -28,7 +28,7 @@ def _diagonal_triu_matrix(diagonal):
     return csc_matrix(data)
 
 
-def test_band_structure_defaults_include_sparse_shift_invert_options():
+def test_band_structure_defaults_include_solver_options():
     band_structure = INPUT["BAND_STRUCTURE"]
 
     assert band_structure["solver"] == [str, 1, "dense"]

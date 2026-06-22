@@ -48,7 +48,7 @@ BAND_STRUCTURE
 
 `wf_collect`: Whether to output wave function matrix information. The wave function file stores the expansion coefficients of NAOs.
 
-`solver`: Selects the eigensolver for the band calculation. Use `dense` for full diagonalization. Use `parpack` for the Lanczos-based near-Fermi solver. The legacy keyword `sparse` is still accepted as a compatibility alias for `parpack`.
+`solver`: Selects the eigensolver for the band calculation. Use `dense` for full diagonalization. Use `parpack` for large systems when computing all bands is too expensive; this mode uses the ARPACK-backed shift-invert Lanczos path to target bands near the Fermi level. The legacy keyword `sparse` is still accepted as a compatibility alias for `parpack`.
 
 `fermi_band_num`: When `solver` is `parpack`, this sets how many bands around the Fermi level are solved at each k-point. If an explicit `band_range` is given and `fermi_band_num` is left as `0`, the width of `band_range` is used automatically.
 

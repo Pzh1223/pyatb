@@ -1,7 +1,7 @@
 """
 This function will not calculate very dense k points, such as more than 1,000,000 k points
 """
-from numbers import Integral
+from numbers import Integral, Real
 import typing
 from pyatb import RANK, COMM, SIZE, OUTPUT_PATH, RUNNING_LOG, timer
 from pyatb.kpt import kpoint_generator
@@ -539,6 +539,10 @@ plt.close('all')
 
         if self.use_sparse_solver:
             if not isinstance(fermi_band_num, Integral):
+                if isinstance(fermi_band_num, Real):
+                    raise ValueError(
+                        f"fermi_band_num must be an integer, got non-integer numeric value {fermi_band_num!r}."
+                    )
                 raise ValueError(
                     f"fermi_band_num must be an integer, got {fermi_band_num!r} "
                     f"({type(fermi_band_num).__name__})."

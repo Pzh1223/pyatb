@@ -254,7 +254,7 @@ class solver:
 
         if self.basis_num == 1:
             overlap = Sk_sparse[0, 0].real
-            if abs(overlap) <= OVERLAP_SINGULAR_TOL:
+            if np.abs(overlap) <= OVERLAP_SINGULAR_TOL:
                 raise ValueError("Sparse solver requires a non-singular overlap matrix.")
             eigenvalues = np.array([Hk_sparse[0, 0].real / overlap], dtype=float)
             if not return_vectors:
