@@ -521,7 +521,10 @@ plt.close('all')
             raise ValueError("solver must be 'dense' or 'sparse'.")
         self.use_sparse_solver = solver == 'sparse'
         if not isinstance(fermi_band_num, Integral):
-            raise ValueError(f'fermi_band_num must be an integer, got {type(fermi_band_num).__name__}.')
+            raise ValueError(
+                f'fermi_band_num must be an integer, got {fermi_band_num!r} '
+                f'({type(fermi_band_num).__name__}).'
+            )
         self.sparse_band_num = int(fermi_band_num)
 
         if band_range[0] == -1 and band_range[1] == -1:
@@ -534,7 +537,10 @@ plt.close('all')
                 raise ValueError('Sparse band solver requires sparse_format = 1.')
             if self.sparse_band_num <= 0:
                 if band_range[0] == -1 and band_range[1] == -1:
-                    raise ValueError('fermi_band_num must be positive when using the sparse band solver.')
+                    raise ValueError(
+                        'fermi_band_num must be positive when using the sparse band solver '
+                        'without an explicit band_range.'
+                    )
                 self.sparse_band_num = self._get_band_range_width()
             if self.sparse_band_num > self.__tb.basis_num:
                 raise ValueError('fermi_band_num cannot exceed basis_num.')

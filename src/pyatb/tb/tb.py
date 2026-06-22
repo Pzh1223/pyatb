@@ -25,7 +25,6 @@ class tb:
             self.tb_solver_dn = solver(self.lattice_constant, self.lattice_vector)
 
     def set_solver_HSR(self, HR, SR, isSparse=False):
-        self.HSR_iSsparse = isSparse
         self.HSR_is_sparse = isSparse
 
         # Check whether HR and SR are consistent
@@ -50,7 +49,6 @@ class tb:
         self.basis_num = HR.basis_num
 
     def set_solver_HSR_spin2(self, HR_up, HR_dn, SR, isSparse=False):
-        self.HSR_iSsparse = isSparse
         self.HSR_is_sparse = isSparse
 
         if self.nspin != 2:
@@ -86,11 +84,11 @@ class tb:
 
     def set_solver_rR(self, rR_x, rR_y, rR_z, isSparse=False):
         try:
-            self.HSR_iSsparse
-        except NameError:
+            self.HSR_is_sparse
+        except AttributeError:
             print('set_solver_rR() must be executed after set_solver_HSR_ function() or set_solver_HSR_spin2()')
 
-        if self.HSR_iSsparse != isSparse:
+        if self.HSR_is_sparse != isSparse:
             raise ValueError('isSparse must be consistent for rR and HSR')
 
         # Check whether HR and rR are consistent

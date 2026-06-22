@@ -5,6 +5,7 @@ from scipy.sparse.linalg import eigsh
 from pyatb.interface_python import interface_python as tb_solver_
 
 IMAG_EIGENVALUE_TOL = 1e-8
+OVERLAP_SINGULAR_TOL = 1e-12
 MIN_SPARSE_BASIS = 4
 NEAR_FULL_BAND_MARGIN = 1
 
@@ -189,11 +190,10 @@ class solver:
 
         return eigenvalues
 
-    def _get_sparse_matrix(self, XR, k_direct_coor):
+    def _build_sparse_matrix(self, XR, phase):
         if not self._sparse_enabled:
             raise ValueError("Sparse solver is only available after set_HSR_sparse().")
 
-        phase = np.exp(2j * np.pi * (self.R_direct_coor @ k_direct_coor))
         upper_triangle = np.asarray(XR.transpose().dot(phase)).reshape(-1)
         matrix_upper = coo_matrix(
             (upper_triangle, (self._triu_rows, self._triu_cols)),
@@ -208,11 +208,23 @@ class solver:
             ).tocsc()
         return matrix
 
+    def _get_sparse_phase(self, k_direct_coor):
+        return np.exp(2j * np.pi * (self.R_direct_coor @ k_direct_coor))
+
     def get_Hk_sparse(self, k_direct_coor):
-        return self._get_sparse_matrix(self._sparse_hr, np.asarray(k_direct_coor, dtype=float))
+        phase = self._get_sparse_phase(np.asarray(k_direct_coor, dtype=float))
+        return self._build_sparse_matrix(self._sparse_hr, phase)
 
     def get_Sk_sparse(self, k_direct_coor):
-        return self._get_sparse_matrix(self._sparse_sr, np.asarray(k_direct_coor, dtype=float))
+        phase = self._get_sparse_phase(np.asarray(k_direct_coor, dtype=float))
+        return self._build_sparse_matrix(self._sparse_sr, phase)
+
+    def get_HSk_sparse(self, k_direct_coor):
+        phase = self._get_sparse_phase(np.asarray(k_direct_coor, dtype=float))
+        return (
+            self._build_sparse_matrix(self._sparse_hr, phase),
+            self._build_sparse_matrix(self._sparse_sr, phase),
+        )
 
     def _dense_near_sigma(self, Hk_sparse, Sk_sparse, sigma, band_num, return_vectors):
         eigenvalues, eigenvectors = eigh(Hk_sparse.toarray(), Sk_sparse.toarray())
@@ -240,7 +252,7 @@ class solver:
 
         if self.basis_num == 1:
             overlap = Sk_sparse[0, 0].real
-            if abs(overlap) <= IMAG_EIGENVALUE_TOL:
+            if abs(overlap) <= OVERLAP_SINGULAR_TOL:
                 raise ValueError("Sparse solver requires a non-singular overlap matrix.")
             eigenvalues = np.array([Hk_sparse[0, 0].real / overlap], dtype=float)
             if not return_vectors:
@@ -279,8 +291,7 @@ class solver:
         eigenvectors = np.zeros([kpoint_num, self.basis_num, band_num], dtype=complex)
         eigenvalues = np.zeros([kpoint_num, band_num], dtype=float)
         for ik, kpoint in enumerate(k_direct_coor):
-            Hk_sparse = self.get_Hk_sparse(kpoint)
-            Sk_sparse = self.get_Sk_sparse(kpoint)
+            Hk_sparse, Sk_sparse = self.get_HSk_sparse(kpoint)
             eigenvectors[ik], eigenvalues[ik] = self._solve_sparse_near_sigma(
                 Hk_sparse, Sk_sparse, fermi_energy, band_num, True
             )
@@ -291,8 +302,7 @@ class solver:
         kpoint_num = k_direct_coor.shape[0]
         eigenvalues = np.zeros([kpoint_num, band_num], dtype=float)
         for ik, kpoint in enumerate(k_direct_coor):
-            Hk_sparse = self.get_Hk_sparse(kpoint)
-            Sk_sparse = self.get_Sk_sparse(kpoint)
+            Hk_sparse, Sk_sparse = self.get_HSk_sparse(kpoint)
             eigenvalues[ik] = self._solve_sparse_near_sigma(
                 Hk_sparse, Sk_sparse, fermi_energy, band_num, False
             )
