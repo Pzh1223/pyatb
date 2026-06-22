@@ -883,6 +883,93 @@ void interface_python::diago_H_eigenvaluesOnly_arpack(
     }
 }
 
+void interface_python::diago_H_parpack(
+    const MatrixXd &k_direct_coor,
+    const int &nev,
+    const double &sigma,
+    const int &ncv,
+    const double &tol,
+    const int &maxiter,
+    const int &mpi_comm_f,
+    py::array_t<std::complex<double>> &eigenvectors,
+    py::array_t<double> &eigenvalues
+)
+{
+    auto eigenvectors_data = eigenvectors.mutable_unchecked<3>();
+    auto eigenvalues_data  = eigenvalues.mutable_unchecked<2>();
+
+    const int kpoint_num = k_direct_coor.rows();
+    MatrixXcd exp_ikR = Base_Data.get_exp_ikR(k_direct_coor);
+    int max_num_threads = omp_get_max_threads();
+
+    #pragma omp parallel for schedule(static) if(kpoint_num > max_num_threads)
+    for (int ik = 0; ik < kpoint_num; ++ik)
+    {
+        VectorXd  temp_eigenvalues;
+        MatrixXcd temp_eigenvectors;
+
+        bool ok = band_structure_solver::get_eigenvalues_eigenvectors_parpack_1k(
+            Base_Data, exp_ikR.row(ik),
+            nev, sigma, ncv, tol, maxiter, mpi_comm_f,
+            temp_eigenvalues, temp_eigenvectors);
+
+        if (!ok)
+        {
+            band_structure_solver::get_eigenvalues_eigenvectors_range_1k(
+                Base_Data, exp_ikR.row(ik),
+                1, nev, temp_eigenvalues, temp_eigenvectors);
+        }
+
+        const int nout = static_cast<int>(temp_eigenvalues.size());
+        for (int ib = 0; ib < nout; ++ib)
+        {
+            eigenvalues_data(ik, ib) = temp_eigenvalues[ib];
+            for (int iw = 0; iw < Base_Data.basis_num; ++iw)
+                eigenvectors_data(ik, iw, ib) = temp_eigenvectors(iw, ib);
+        }
+    }
+}
+
+void interface_python::diago_H_eigenvaluesOnly_parpack(
+    const MatrixXd &k_direct_coor,
+    const int &nev,
+    const double &sigma,
+    const int &ncv,
+    const double &tol,
+    const int &maxiter,
+    const int &mpi_comm_f,
+    py::array_t<double> &eigenvalues
+)
+{
+    auto eigenvalues_data = eigenvalues.mutable_unchecked<2>();
+
+    const int kpoint_num = k_direct_coor.rows();
+    MatrixXcd exp_ikR = Base_Data.get_exp_ikR(k_direct_coor);
+    int max_num_threads = omp_get_max_threads();
+
+    #pragma omp parallel for schedule(static) if(kpoint_num > max_num_threads)
+    for (int ik = 0; ik < kpoint_num; ++ik)
+    {
+        VectorXd temp_eigenvalues;
+
+        bool ok = band_structure_solver::get_eigenvalues_parpack_1k(
+            Base_Data, exp_ikR.row(ik),
+            nev, sigma, ncv, tol, maxiter, mpi_comm_f,
+            temp_eigenvalues);
+
+        if (!ok)
+        {
+            band_structure_solver::get_eigenvalues_range_1k(
+                Base_Data, exp_ikR.row(ik),
+                1, nev, temp_eigenvalues);
+        }
+
+        const int nout = static_cast<int>(temp_eigenvalues.size());
+        for (int ib = 0; ib < nout; ++ib)
+            eigenvalues_data(ik, ib) = temp_eigenvalues[ib];
+    }
+}
+
 
 void interface_python::get_total_berry_curvature_fermi(
     const MatrixXd &k_direct_coor,
@@ -1487,6 +1574,8 @@ PYBIND11_MODULE(interface_python, m, py::mod_gil_not_used())
         .def("diago_H_eigenvaluesOnly_range", &interface_python::diago_H_eigenvaluesOnly_range)
         .def("diago_H_arpack", &interface_python::diago_H_arpack)
         .def("diago_H_eigenvaluesOnly_arpack", &interface_python::diago_H_eigenvaluesOnly_arpack)
+        .def("diago_H_parpack", &interface_python::diago_H_parpack)
+        .def("diago_H_eigenvaluesOnly_parpack", &interface_python::diago_H_eigenvaluesOnly_parpack)
         .def("get_total_berry_curvature_fermi", &interface_python::get_total_berry_curvature_fermi)
         .def("get_total_berry_curvature_occupiedNumber", &interface_python::get_total_berry_curvature_occupiedNumber)
         .def("get_berry_phase_of_loop", &interface_python::get_berry_phase_of_loop)

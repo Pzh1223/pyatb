@@ -84,13 +84,13 @@ class Band_Structure:
 
         self.output_path = output_path
 
-        # ARPACK parameters (set later by calculate_band_structure)
-        self.__eigensolver   = 'lapack'
-        self.__arpack_nev    = 0
-        self.__arpack_ncv    = 0
-        self.__arpack_sigma  = 0.0
-        self.__arpack_tol    = 0.0
-        self.__arpack_maxiter = 300
+        self.__eigensolver = 'lapack'
+        self.__iterative_nev = 0
+        self.__iterative_ncv = 0
+        self.__iterative_sigma = 0.0
+        self.__iterative_tol = 0.0
+        self.__iterative_maxiter = 300
+        self.__iterative_comm_f = 0
 
         if RANK == 0:
             with open(RUNNING_LOG, 'a') as f:
@@ -196,17 +196,29 @@ class Band_Structure:
             for ispin in range(spin_loop):
                 if kpoint_num:
                     if self.__eigensolver == 'arpack':
-                        nev     = self.__arpack_nev
-                        ncv     = self.__arpack_ncv
-                        sigma   = self.__arpack_sigma
-                        tol     = self.__arpack_tol
-                        maxiter = self.__arpack_maxiter
+                        nev     = self.__iterative_nev
+                        ncv     = self.__iterative_ncv
+                        sigma   = self.__iterative_sigma
+                        tol     = self.__iterative_tol
+                        maxiter = self.__iterative_maxiter
                         if self.wf_collect:
                             eigenvectors, eigenvalues = self.__tb_solver[ispin].diago_H_arpack(
                                 ik_process.k_direct_coor_local, nev, sigma, ncv, tol, maxiter)
                         else:
                             eigenvalues = self.__tb_solver[ispin].diago_H_eigenvaluesOnly_arpack(
                                 ik_process.k_direct_coor_local, nev, sigma, ncv, tol, maxiter)
+                    elif self.__eigensolver == 'parpack':
+                        nev     = self.__iterative_nev
+                        ncv     = self.__iterative_ncv
+                        sigma   = self.__iterative_sigma
+                        tol     = self.__iterative_tol
+                        maxiter = self.__iterative_maxiter
+                        if self.wf_collect:
+                            eigenvectors, eigenvalues = self.__tb_solver[ispin].diago_H_parpack(
+                                ik_process.k_direct_coor_local, nev, sigma, ncv, tol, maxiter, COMM)
+                        else:
+                            eigenvalues = self.__tb_solver[ispin].diago_H_eigenvaluesOnly_parpack(
+                                ik_process.k_direct_coor_local, nev, sigma, ncv, tol, maxiter, COMM)
                     else:
                         if self.wf_collect:
                             if self.cal_all_band:
@@ -514,42 +526,96 @@ plt.close('all')
             o_file.write(f" CBM {i+1} (band index and k coor):" + 
                     f"{ik_ib[1]: 10.0f} {ik_ib[0][0]: 10.6f}{ik_ib[0][1]: 10.6f}{ik_ib[0][2]: 10.6f}\n")
 
-    def calculate_band_structure(self, fermi_energy, kpoint_mode, band_range,
-                                 eigensolver='lapack', arpack_nev=50, arpack_ncv=0,
-                                 arpack_tol=0.0, arpack_maxiter=300, **kwarg):
-        COMM.Barrier()
-
-        timer.start('band_structure', 'calculate band structure')
-
-        self.fermi_energy = fermi_energy
-
-        # Store ARPACK parameters
+    def __configure_eigensolver(
+        self,
+        fermi_energy,
+        band_range,
+        eigensolver='lapack',
+        arpack_nev=50,
+        arpack_ncv=0,
+        arpack_tol=0.0,
+        arpack_maxiter=300,
+        parpack_nev=None,
+        parpack_ncv=None,
+        parpack_tol=None,
+        parpack_maxiter=None
+    ):
         self.__eigensolver = eigensolver.lower()
-        if self.__eigensolver == 'arpack':
-            nev = arpack_nev
-            if nev <= 0:
-                raise ValueError("arpack_nev must be a positive integer.")
-            ncv = arpack_ncv if arpack_ncv > 0 else max(2 * nev + 1, nev + 32)
-            self.__arpack_nev     = nev
-            self.__arpack_ncv     = ncv
-            self.__arpack_sigma   = fermi_energy
-            self.__arpack_tol     = arpack_tol
-            self.__arpack_maxiter = arpack_maxiter
-            # Repurpose band_range to match ARPACK output size so that get_band_structure
-            # allocates output arrays of shape [kpoint_num, nev].
-            # band_range = [1, nev] => cal_band_num = nev - 1 + 1 = nev.
-            self.band_range = np.array([1, nev], dtype=int)
-            self.cal_all_band = False
-        else:
+        if self.__eigensolver not in ('lapack', 'arpack', 'parpack'):
+            raise ValueError("eigensolver must be one of 'lapack', 'arpack', or 'parpack'.")
+
+        self.__iterative_nev = 0
+        self.__iterative_ncv = 0
+        self.__iterative_sigma = 0.0
+        self.__iterative_tol = 0.0
+        self.__iterative_maxiter = 300
+        self.__iterative_comm_f = 0
+
+        if self.__eigensolver == 'lapack':
             if band_range[0] == -1 and band_range[1] == -1:
                 self.band_range = np.array([1, self.__tb.basis_num], dtype=int)
             else:
                 self.band_range = band_range
 
-            if self.band_range[0] == 1 and self.band_range[1] == self.__tb.basis_num:
-                self.cal_all_band = True
-            else:
-                self.cal_all_band = False
+            self.cal_all_band = (
+                self.band_range[0] == 1 and self.band_range[1] == self.__tb.basis_num
+            )
+            return
+
+        if self.__eigensolver == 'arpack':
+            nev = arpack_nev
+            ncv = arpack_ncv
+            tol = arpack_tol
+            maxiter = arpack_maxiter
+        else:
+            nev = arpack_nev if parpack_nev is None else parpack_nev
+            ncv = arpack_ncv if parpack_ncv is None else parpack_ncv
+            tol = arpack_tol if parpack_tol is None else parpack_tol
+            maxiter = arpack_maxiter if parpack_maxiter is None else parpack_maxiter
+            py2f = getattr(COMM, "py2f", None)
+            if callable(py2f):
+                self.__iterative_comm_f = int(py2f())
+
+        if nev <= 0:
+            raise ValueError(f"{self.__eigensolver}_nev must be a positive integer.")
+
+        if nev >= self.__tb.basis_num:
+            self.__eigensolver = 'lapack'
+            self.band_range = np.array([1, self.__tb.basis_num], dtype=int)
+            self.cal_all_band = True
+            return
+
+        self.__iterative_nev = nev
+        self.__iterative_ncv = ncv if ncv > 0 else max(2 * nev + 1, nev + 32)
+        self.__iterative_sigma = fermi_energy
+        self.__iterative_tol = tol
+        self.__iterative_maxiter = maxiter
+        self.band_range = np.array([1, nev], dtype=int)
+        self.cal_all_band = False
+
+    def calculate_band_structure(self, fermi_energy, kpoint_mode, band_range,
+                                 eigensolver='lapack', arpack_nev=50, arpack_ncv=0,
+                                 arpack_tol=0.0, arpack_maxiter=300,
+                                 parpack_nev=None, parpack_ncv=None,
+                                 parpack_tol=None, parpack_maxiter=None, **kwarg):
+        COMM.Barrier()
+
+        timer.start('band_structure', 'calculate band structure')
+
+        self.fermi_energy = fermi_energy
+        self.__configure_eigensolver(
+            fermi_energy,
+            band_range,
+            eigensolver=eigensolver,
+            arpack_nev=arpack_nev,
+            arpack_ncv=arpack_ncv,
+            arpack_tol=arpack_tol,
+            arpack_maxiter=arpack_maxiter,
+            parpack_nev=parpack_nev,
+            parpack_ncv=parpack_ncv,
+            parpack_tol=parpack_tol,
+            parpack_maxiter=parpack_maxiter
+        )
 
         if kpoint_mode == 'mp':
             self.set_k_mp(**kwarg)

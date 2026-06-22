@@ -200,6 +200,24 @@ class solver:
 
         return eigenvectors, eigenvalues
 
+    @staticmethod
+    def _comm_to_fortran_handle(comm):
+        if comm is None:
+            return 0
+
+        py2f = getattr(comm, "py2f", None)
+        if callable(py2f):
+            return int(py2f())
+
+        handle = getattr(comm, "handle", None)
+        if handle is not None:
+            return int(handle)
+
+        if isinstance(comm, (int, np.integer)):
+            return int(comm)
+
+        raise TypeError("comm must be an MPI communicator or integer Fortran handle.")
+
     def diago_H_eigenvaluesOnly_arpack(self, k_direct_coor, nev, sigma, ncv=0, tol=0.0, maxiter=300):
         """
         Eigenvalue-only ARPACK variant.  Same parameters as diago_H_arpack.
@@ -217,6 +235,37 @@ class solver:
         eigenvalues = np.zeros([kpoint_num, nev], dtype=float)
         self.tb_solver.diago_H_eigenvaluesOnly_arpack(
             k_direct_coor, nev, sigma, ncv, tol, maxiter,
+            eigenvalues)
+
+        return eigenvalues
+
+    def diago_H_parpack(self, k_direct_coor, nev, sigma, ncv=0, tol=0.0, maxiter=300, comm=None):
+        if nev <= 0:
+            raise ValueError("nev must be positive.")
+        if ncv == 0:
+            ncv = max(2 * nev + 1, nev + 32)
+
+        mpi_comm_f = self._comm_to_fortran_handle(comm)
+        kpoint_num = k_direct_coor.shape[0]
+        eigenvectors = np.zeros([kpoint_num, self.basis_num, nev], dtype=complex)
+        eigenvalues  = np.zeros([kpoint_num, nev], dtype=float)
+        self.tb_solver.diago_H_parpack(
+            k_direct_coor, nev, sigma, ncv, tol, maxiter, mpi_comm_f,
+            eigenvectors, eigenvalues)
+
+        return eigenvectors, eigenvalues
+
+    def diago_H_eigenvaluesOnly_parpack(self, k_direct_coor, nev, sigma, ncv=0, tol=0.0, maxiter=300, comm=None):
+        if nev <= 0:
+            raise ValueError("nev must be positive.")
+        if ncv == 0:
+            ncv = max(2 * nev + 1, nev + 32)
+
+        mpi_comm_f = self._comm_to_fortran_handle(comm)
+        kpoint_num = k_direct_coor.shape[0]
+        eigenvalues = np.zeros([kpoint_num, nev], dtype=float)
+        self.tb_solver.diago_H_eigenvaluesOnly_parpack(
+            k_direct_coor, nev, sigma, ncv, tol, maxiter, mpi_comm_f,
             eigenvalues)
 
         return eigenvalues

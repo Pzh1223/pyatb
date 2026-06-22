@@ -576,3 +576,40 @@ bool tools::diagonalize_arpack_shift_invert_eigenvaluesOnly_1k(
         H_k, S_k, nev, sigma, ncv_in, tol_in, maxiter,
         eigenvalues, eigenvectors);
 }
+
+bool tools::diagonalize_parpack_shift_invert_1k(
+    const MatrixXcd &H_k,
+    const MatrixXcd &S_k,
+    const int &nev,
+    const double &sigma,
+    const int &ncv,
+    const double &tol,
+    const int &maxiter,
+    const int &mpi_comm_f,
+    VectorXd &eigenvalues,
+    MatrixXcd &eigenvectors
+)
+{
+    (void)mpi_comm_f;
+    return diagonalize_arpack_shift_invert_1k(
+        H_k, S_k, nev, sigma, ncv, tol, maxiter,
+        eigenvalues, eigenvectors);
+}
+
+bool tools::diagonalize_parpack_shift_invert_eigenvaluesOnly_1k(
+    const MatrixXcd &H_k,
+    const MatrixXcd &S_k,
+    const int &nev,
+    const double &sigma,
+    const int &ncv,
+    const double &tol,
+    const int &maxiter,
+    const int &mpi_comm_f,
+    VectorXd &eigenvalues
+)
+{
+    MatrixXcd eigenvectors;
+    return diagonalize_parpack_shift_invert_1k(
+        H_k, S_k, nev, sigma, ncv, tol, maxiter, mpi_comm_f,
+        eigenvalues, eigenvectors);
+}

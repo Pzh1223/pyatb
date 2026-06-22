@@ -109,6 +109,34 @@ public:
         const int &maxiter,
         VectorXd &eigenvalues
     );
+
+    // PARPACK backend hook. The current implementation keeps the MPI communicator
+    // explicit at the API boundary so the numerical kernel can be upgraded without
+    // changing the Python/C++ call chain again.
+    static bool diagonalize_parpack_shift_invert_1k(
+        const MatrixXcd &H_k,
+        const MatrixXcd &S_k,
+        const int &nev,
+        const double &sigma,
+        const int &ncv,
+        const double &tol,
+        const int &maxiter,
+        const int &mpi_comm_f,
+        VectorXd &eigenvalues,
+        MatrixXcd &eigenvectors
+    );
+
+    static bool diagonalize_parpack_shift_invert_eigenvaluesOnly_1k(
+        const MatrixXcd &H_k,
+        const MatrixXcd &S_k,
+        const int &nev,
+        const double &sigma,
+        const int &ncv,
+        const double &tol,
+        const int &maxiter,
+        const int &mpi_comm_f,
+        VectorXd &eigenvalues
+    );
 };
 
 

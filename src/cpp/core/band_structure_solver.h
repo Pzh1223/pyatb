@@ -94,6 +94,31 @@ public:
         VectorXd &eigenvalues,
         MatrixXcd &eigenvectors
     );
+
+    static bool get_eigenvalues_parpack_1k(
+        base_data &Base_Data,
+        const VectorXcd &exp_ikR,
+        const int &nev,
+        const double &sigma,
+        const int &ncv,
+        const double &tol,
+        const int &maxiter,
+        const int &mpi_comm_f,
+        VectorXd &eigenvalues
+    );
+
+    static bool get_eigenvalues_eigenvectors_parpack_1k(
+        base_data &Base_Data,
+        const VectorXcd &exp_ikR,
+        const int &nev,
+        const double &sigma,
+        const int &ncv,
+        const double &tol,
+        const int &maxiter,
+        const int &mpi_comm_f,
+        VectorXd &eigenvalues,
+        MatrixXcd &eigenvectors
+    );
 };
 
 #endif

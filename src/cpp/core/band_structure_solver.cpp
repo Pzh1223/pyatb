@@ -175,3 +175,40 @@ bool band_structure_solver::get_eigenvalues_eigenvectors_arpack_1k(
     return tools::diagonalize_arpack_shift_invert_1k(
         Hk, Sk, nev, sigma, ncv, tol, maxiter, eigenvalues, eigenvectors);
 }
+
+bool band_structure_solver::get_eigenvalues_parpack_1k(
+    base_data &Base_Data,
+    const VectorXcd &exp_ikR,
+    const int &nev,
+    const double &sigma,
+    const int &ncv,
+    const double &tol,
+    const int &maxiter,
+    const int &mpi_comm_f,
+    VectorXd &eigenvalues
+)
+{
+    MatrixXcd Hk = xr_operation::get_Hk(Base_Data, exp_ikR);
+    MatrixXcd Sk = xr_operation::get_Sk(Base_Data, exp_ikR);
+    return tools::diagonalize_parpack_shift_invert_eigenvaluesOnly_1k(
+        Hk, Sk, nev, sigma, ncv, tol, maxiter, mpi_comm_f, eigenvalues);
+}
+
+bool band_structure_solver::get_eigenvalues_eigenvectors_parpack_1k(
+    base_data &Base_Data,
+    const VectorXcd &exp_ikR,
+    const int &nev,
+    const double &sigma,
+    const int &ncv,
+    const double &tol,
+    const int &maxiter,
+    const int &mpi_comm_f,
+    VectorXd &eigenvalues,
+    MatrixXcd &eigenvectors
+)
+{
+    MatrixXcd Hk = xr_operation::get_Hk(Base_Data, exp_ikR);
+    MatrixXcd Sk = xr_operation::get_Sk(Base_Data, exp_ikR);
+    return tools::diagonalize_parpack_shift_invert_1k(
+        Hk, Sk, nev, sigma, ncv, tol, maxiter, mpi_comm_f, eigenvalues, eigenvectors);
+}

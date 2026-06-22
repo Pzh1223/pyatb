@@ -174,7 +174,11 @@ INPUT = {
         'arpack_nev'                  : [int, 1, 50],
         'arpack_ncv'                  : [int, 1, 0],
         'arpack_tol'                  : [float, 1, 0.0],
-        'arpack_maxiter'              : [int, 1, 300]
+        'arpack_maxiter'              : [int, 1, 300],
+        'parpack_nev'                 : [int, 1, 50],
+        'parpack_ncv'                 : [int, 1, 0],
+        'parpack_tol'                 : [float, 1, 0.0],
+        'parpack_maxiter'             : [int, 1, 300]
     },
 
     'BANDUNFOLDING' : 

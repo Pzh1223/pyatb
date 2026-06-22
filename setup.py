@@ -1,4 +1,5 @@
 import os
+import shlex
 import subprocess
 from glob import glob
 from setuptools import setup, find_packages
@@ -8,7 +9,25 @@ try:
 except:
     from setuptools import Extension as Pybind11Extension
 
+def _env_truthy(name):
+    value = os.getenv(name, "")
+    return value.lower() in {"1", "true", "yes", "on"}
+
+
+def _split_env_flags(name):
+    value = os.getenv(name, "")
+    return shlex.split(value) if value else []
+
+
+def _split_env_list(name):
+    value = os.getenv(name, "")
+    if not value:
+        return []
+    return [item.strip() for item in value.split(os.pathsep) if item.strip()]
+
+
 libraries = ['openblas', 'lapacke', 'arpack']
+define_macros = []
 
 include_dirs = [
     os.path.join("src", "cpp", "core"),
@@ -19,6 +38,14 @@ include_dirs = [
 extra_compile_args = ['-fopenmp']
 extra_link_args = ['-lgomp']
 
+if _env_truthy("PYATB_ENABLE_PARPACK"):
+    libraries.append('parpack')
+    define_macros.append(("PYATB_ENABLE_PARPACK", "1"))
+    include_dirs.extend(_split_env_list("PYATB_MPI_INCLUDE_DIRS"))
+    libraries.extend(_split_env_list("PYATB_MPI_LIBRARIES"))
+    extra_compile_args.extend(_split_env_flags("PYATB_MPI_COMPILE_ARGS"))
+    extra_link_args.extend(_split_env_flags("PYATB_MPI_LINK_ARGS"))
+
 sources = sorted(glob("src/cpp/core/*.cpp")) + sorted(glob("src/cpp/interface_python/*.cpp"))
 
 ext_modules = [
@@ -27,6 +54,7 @@ ext_modules = [
         sources=sources,
         include_dirs=include_dirs,
         libraries=libraries,
+        define_macros=define_macros,
         extra_compile_args=extra_compile_args,
         extra_link_args=extra_link_args,
         language="c++",
