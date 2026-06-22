@@ -169,6 +169,8 @@ INPUT = {
     {
         'wf_collect'                  : [int, 1, False],
         'band_range'                  : [int, 2, [-1, -1]],
+        'solver'                      : [str, 1, 'dense'],
+        'fermi_band_num'              : [int, 1, 0],
         'kpoint_mode'                 : [str, 1, None]
     },
 

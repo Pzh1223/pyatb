@@ -1,18 +1,35 @@
 import numpy as np
+from scipy.linalg import eigh
+from scipy.sparse import coo_matrix
+from scipy.sparse.linalg import eigsh
 from pyatb.interface_python import interface_python as tb_solver_
 
 class solver:
     def __init__(self, lattice_constant, lattice_vector):
         self.tb_solver = tb_solver_(lattice_constant, lattice_vector)
+        self._sparse_enabled = False
+        self._sparse_hr = None
+        self._sparse_sr = None
+        self._triu_rows = None
+        self._triu_cols = None
 
     def set_HSR(self, R_num, R_direct_coor, basis_num, HR, SR):
         self.R_num = R_num
         self.basis_num = basis_num
+        self.R_direct_coor = np.asarray(R_direct_coor, dtype=float)
+        self._sparse_enabled = False
+        self._sparse_hr = None
+        self._sparse_sr = None
         self.tb_solver.set_HSR(R_num, R_direct_coor, basis_num, HR, SR)
 
     def set_HSR_sparse(self, R_num, R_direct_coor, basis_num, HR, SR):
         self.R_num = R_num
         self.basis_num = basis_num
+        self.R_direct_coor = np.asarray(R_direct_coor, dtype=float)
+        self._sparse_enabled = True
+        self._sparse_hr = HR.copy()
+        self._sparse_sr = SR.copy()
+        self._triu_rows, self._triu_cols = np.triu_indices(self.basis_num)
         self.tb_solver.set_HSR_sparse(R_num, R_direct_coor, basis_num, HR, SR)
 
     def set_rR(self, rR_x, rR_y, rR_z):
@@ -165,6 +182,106 @@ class solver:
         eigenvalues = np.zeros([kpoint_num, cal_band_num], dtype=float)
         self.tb_solver.diago_H_eigenvaluesOnly_range(k_direct_coor, lower_band_index, upper_band_index, eigenvalues)
 
+        return eigenvalues
+
+    def _get_sparse_matrix(self, XR, k_direct_coor):
+        if not self._sparse_enabled:
+            raise ValueError("Sparse solver is only available after set_HSR_sparse().")
+
+        phase = np.exp(2j * np.pi * (self.R_direct_coor @ k_direct_coor))
+        upper_triangle = np.asarray(XR.transpose().dot(phase)).reshape(-1)
+        matrix_upper = coo_matrix(
+            (upper_triangle, (self._triu_rows, self._triu_cols)),
+            shape=(self.basis_num, self.basis_num),
+        ).tocsc()
+        matrix = matrix_upper + matrix_upper.getH()
+        diagonal = matrix_upper.diagonal()
+        if diagonal.size:
+            matrix = matrix - coo_matrix(
+                (diagonal, (np.arange(self.basis_num), np.arange(self.basis_num))),
+                shape=(self.basis_num, self.basis_num),
+            ).tocsc()
+        return matrix
+
+    def get_Hk_sparse(self, k_direct_coor):
+        return self._get_sparse_matrix(self._sparse_hr, np.asarray(k_direct_coor, dtype=float))
+
+    def get_Sk_sparse(self, k_direct_coor):
+        return self._get_sparse_matrix(self._sparse_sr, np.asarray(k_direct_coor, dtype=float))
+
+    def _dense_near_sigma(self, Hk_sparse, Sk_sparse, sigma, band_num, return_vectors):
+        eigenvalues, eigenvectors = eigh(Hk_sparse.toarray(), Sk_sparse.toarray())
+        order = np.argsort(np.abs(eigenvalues - sigma))[:band_num]
+        eigenvalues = np.asarray(eigenvalues[order], dtype=float)
+        sort_index = np.argsort(eigenvalues)
+        eigenvalues = eigenvalues[sort_index]
+        if not return_vectors:
+            return eigenvalues
+
+        eigenvectors = np.asarray(eigenvectors[:, order], dtype=complex)[:, sort_index]
+        return eigenvectors, eigenvalues
+
+    def _solve_sparse_near_sigma(self, Hk_sparse, Sk_sparse, sigma, band_num, return_vectors):
+        if band_num <= 0:
+            raise ValueError("band_num must be positive for sparse near-Fermi solving.")
+        if band_num > self.basis_num:
+            raise ValueError("band_num cannot exceed basis_num.")
+
+        if self.basis_num == 1:
+            eigenvalues = np.array([Hk_sparse[0, 0].real / Sk_sparse[0, 0].real], dtype=float)
+            if not return_vectors:
+                return eigenvalues
+            return np.array([[1.0 + 0.0j]], dtype=complex), eigenvalues
+
+        if band_num >= self.basis_num:
+            return self._dense_near_sigma(Hk_sparse, Sk_sparse, sigma, band_num, return_vectors)
+
+        if self.basis_num <= 3 or band_num >= self.basis_num - 1:
+            return self._dense_near_sigma(Hk_sparse, Sk_sparse, sigma, band_num, return_vectors)
+
+        result = eigsh(
+            Hk_sparse,
+            k=band_num,
+            M=Sk_sparse,
+            sigma=sigma,
+            which='LM',
+            return_eigenvectors=return_vectors,
+        )
+
+        if return_vectors:
+            eigenvalues, eigenvectors = result
+            eigenvalues = np.real_if_close(eigenvalues, tol=1000).astype(float)
+            sort_index = np.argsort(eigenvalues)
+            eigenvalues = eigenvalues[sort_index]
+            eigenvectors = np.asarray(eigenvectors[:, sort_index], dtype=complex)
+            return eigenvectors, eigenvalues
+
+        eigenvalues = np.real_if_close(result, tol=1000).astype(float)
+        return np.sort(eigenvalues)
+
+    def diago_H_near_fermi(self, k_direct_coor, fermi_energy, band_num):
+        k_direct_coor = np.asarray(k_direct_coor, dtype=float)
+        kpoint_num = k_direct_coor.shape[0]
+        eigenvectors = np.zeros([kpoint_num, self.basis_num, band_num], dtype=complex)
+        eigenvalues = np.zeros([kpoint_num, band_num], dtype=float)
+        for ik, kpoint in enumerate(k_direct_coor):
+            Hk_sparse = self.get_Hk_sparse(kpoint)
+            Sk_sparse = self.get_Sk_sparse(kpoint)
+            eigenvectors[ik], eigenvalues[ik] = self._solve_sparse_near_sigma(
+                Hk_sparse, Sk_sparse, fermi_energy, band_num, True
+            )
+        return eigenvectors, eigenvalues
+
+    def diago_H_eigenvaluesOnly_near_fermi(self, k_direct_coor, fermi_energy, band_num):
+        k_direct_coor = np.asarray(k_direct_coor, dtype=float)
+        kpoint_num = k_direct_coor.shape[0]
+        eigenvalues = np.zeros([kpoint_num, band_num], dtype=float)
+        for ik, kpoint in enumerate(k_direct_coor):
+            Hk_sparse = self.get_Hk_sparse(kpoint)
+            Sk_sparse = self.get_Sk_sparse(kpoint)
+            eigenvalues[ik] = self._solve_sparse_near_sigma(
+                Hk_sparse, Sk_sparse, fermi_energy, band_num, False
+            )
         return eigenvalues
 
     def get_total_berry_curvature_fermi(self, k_direct_coor, fermi_energy, mode):

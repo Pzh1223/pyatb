@@ -64,6 +64,8 @@ class Band_Structure:
 
         self.wf_collect = wf_collect
         self.nspin = tb.nspin
+        self.use_sparse_solver = False
+        self.sparse_band_num = 0
 
         self.vbm = {}
         self.cbm = {}
@@ -96,6 +98,15 @@ class Band_Structure:
 
                 f.write('\nParameter setting of wavefunctions : \n')
                 f.write(' >> wf_collect : %d\n' % (self.wf_collect))
+
+    def _get_cal_band_num(self):
+        if self.use_sparse_solver:
+            return self.sparse_band_num
+
+        basis_num = self.__tb.basis_num
+        if self.cal_all_band:
+            return basis_num
+        return self.band_range[1] - self.band_range[0] + 1
 
     def set_k_mp(
         self, 
@@ -153,10 +164,7 @@ class Band_Structure:
             k_generator = self.__k_generator
 
         basis_num = self.__tb.basis_num
-        if self.cal_all_band:
-            cal_band_num = basis_num
-        else:
-            cal_band_num = self.band_range[1] - self.band_range[0] + 1
+        cal_band_num = self._get_cal_band_num()
 
         if RANK == 0:
             self.kvec_d = np.zeros([0, 3], dtype=float)
@@ -187,16 +195,26 @@ class Band_Structure:
 
             for ispin in range(spin_loop):
                 if kpoint_num:
-                    if self.wf_collect:
-                        if self.cal_all_band:
-                            eigenvectors, eigenvalues = self.__tb_solver[ispin].diago_H(ik_process.k_direct_coor_local)
+                    if self.use_sparse_solver:
+                        if self.wf_collect:
+                            eigenvectors, eigenvalues = self.__tb_solver[ispin].diago_H_near_fermi(
+                                ik_process.k_direct_coor_local, self.fermi_energy, cal_band_num
+                            )
                         else:
-                            eigenvectors, eigenvalues = self.__tb_solver[ispin].diago_H_range(ik_process.k_direct_coor_local, self.band_range[0], self.band_range[1])
+                            eigenvalues = self.__tb_solver[ispin].diago_H_eigenvaluesOnly_near_fermi(
+                                ik_process.k_direct_coor_local, self.fermi_energy, cal_band_num
+                            )
                     else:
-                        if self.cal_all_band:
-                            eigenvalues = self.__tb_solver[ispin].diago_H_eigenvaluesOnly(ik_process.k_direct_coor_local)
+                        if self.wf_collect:
+                            if self.cal_all_band:
+                                eigenvectors, eigenvalues = self.__tb_solver[ispin].diago_H(ik_process.k_direct_coor_local)
+                            else:
+                                eigenvectors, eigenvalues = self.__tb_solver[ispin].diago_H_range(ik_process.k_direct_coor_local, self.band_range[0], self.band_range[1])
                         else:
-                            eigenvalues = self.__tb_solver[ispin].diago_H_eigenvaluesOnly_range(ik_process.k_direct_coor_local, self.band_range[0], self.band_range[1])
+                            if self.cal_all_band:
+                                eigenvalues = self.__tb_solver[ispin].diago_H_eigenvaluesOnly(ik_process.k_direct_coor_local)
+                            else:
+                                eigenvalues = self.__tb_solver[ispin].diago_H_eigenvaluesOnly_range(ik_process.k_direct_coor_local, self.band_range[0], self.band_range[1])
                 else:
                     eigenvalues = np.zeros([0, cal_band_num], dtype=float)
                     if self.wf_collect:
@@ -313,11 +331,7 @@ class Band_Structure:
         with open(os.path.join(output_path, 'kpt.dat'), 'a+') as f:   
             np.savetxt(f, self.kvec_d, fmt='%0.8f')
 
-        basis_num = self.__tb.basis_num
-        if self.cal_all_band:
-            cal_band_num = basis_num
-        else:
-            cal_band_num = self.band_range[1] - self.band_range[0] + 1
+        cal_band_num = self._get_cal_band_num()
 
         if self.nspin != 2:
             with open(os.path.join(output_path, 'band.dat'), 'a+') as f:
@@ -493,22 +507,42 @@ plt.close('all')
             o_file.write(f" CBM {i+1} (band index and k coor):" + 
                     f"{ik_ib[1]: 10.0f} {ik_ib[0][0]: 10.6f}{ik_ib[0][1]: 10.6f}{ik_ib[0][2]: 10.6f}\n")
 
-    def calculate_band_structure(self, fermi_energy, kpoint_mode, band_range, **kwarg):
+    def calculate_band_structure(self, fermi_energy, kpoint_mode, band_range, solver='dense', fermi_band_num=0, **kwarg):
         COMM.Barrier()
 
         timer.start('band_structure', 'calculate band structure')
 
         self.fermi_energy = fermi_energy
+        if solver not in ('dense', 'sparse'):
+            raise ValueError("solver must be 'dense' or 'sparse'.")
+        self.use_sparse_solver = solver == 'sparse'
+        self.sparse_band_num = int(fermi_band_num)
+
+        if self.use_sparse_solver:
+            if not getattr(self.__tb, 'HSR_iSsparse', False):
+                raise ValueError('Sparse band solver requires sparse_format = 1.')
+            if self.sparse_band_num <= 0:
+                if band_range[0] == -1 and band_range[1] == -1:
+                    raise ValueError('fermi_band_num must be positive when using the sparse band solver.')
+                self.sparse_band_num = int(band_range[1] - band_range[0] + 1)
+            if self.sparse_band_num > self.__tb.basis_num:
+                raise ValueError('fermi_band_num cannot exceed basis_num.')
         
         if band_range[0] == -1 and band_range[1] == -1:
             self.band_range = np.array([1, self.__tb.basis_num], dtype=int)
         else:
             self.band_range = band_range
 
-        if self.band_range[0] == 1 and self.band_range[1] == self.__tb.basis_num:
+        if not self.use_sparse_solver and self.band_range[0] == 1 and self.band_range[1] == self.__tb.basis_num:
             self.cal_all_band = True
         else:
             self.cal_all_band = False
+
+        if RANK == 0:
+            with open(RUNNING_LOG, 'a') as f:
+                f.write(' >> eigensolver : %s\n' % ('sparse_shift_invert' if self.use_sparse_solver else 'dense'))
+                if self.use_sparse_solver:
+                    f.write(' >> fermi_band_num : %d\n' % (self.sparse_band_num))
 
         if kpoint_mode == 'mp':
             self.set_k_mp(**kwarg)
