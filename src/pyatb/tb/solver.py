@@ -270,6 +270,8 @@ class solver:
             k=band_num,
             M=Sk_sparse,
             sigma=sigma,
+            # With shift-invert enabled, ARPACK interprets 'LM' in the transformed
+            # problem so that the returned Ritz values map back to eigenvalues nearest sigma.
             which='LM',
             return_eigenvectors=return_vectors,
         )

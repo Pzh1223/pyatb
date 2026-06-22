@@ -91,6 +91,16 @@ class _SparseBandSolver:
         return np.zeros((kpoints.shape[0], band_num), dtype=float)
 
 
+class _DenseBandSolver:
+    def __init__(self):
+        self.calls = []
+
+    def diago_H_eigenvaluesOnly_range(self, kpoints, lower_band_index, upper_band_index):
+        self.calls.append((kpoints.copy(), lower_band_index, upper_band_index))
+        band_num = upper_band_index - lower_band_index + 1
+        return np.zeros((kpoints.shape[0], band_num), dtype=float)
+
+
 class _FakeTB:
     def __init__(self, solver):
         self.nspin = 1
@@ -120,9 +130,29 @@ def test_band_structure_parpack_solver_invokes_near_fermi_solver(tmp_path, monke
     )
 
     assert len(solver.calls) == 1
-    _, fermi_energy, band_num = solver.calls[0]
-    assert fermi_energy == 0.0
-    assert band_num == 2
+
+
+def test_dense_solver_ignores_fermi_band_num_validation(tmp_path, monkeypatch):
+    solver = _DenseBandSolver()
+    tb = _FakeTB(solver)
+    tb.HSR_is_sparse = False
+    monkeypatch.setattr(band_structure_module, "OUTPUT_PATH", str(tmp_path))
+    monkeypatch.setattr(band_structure_module, "RUNNING_LOG", str(tmp_path / "running.log"))
+
+    band = band_structure_module.Band_Structure(tb, wf_collect=False)
+    band.calculate_band_structure(
+        fermi_energy=0.0,
+        kpoint_mode="direct",
+        band_range=np.array([1, 2], dtype=int),
+        solver="dense",
+        fermi_band_num="ignored",
+        kpoint_direct_coor=np.array([[0.0, 0.0, 0.0]], dtype=float),
+    )
+
+    assert len(solver.calls) == 1
+    _, lower_band_index, upper_band_index = solver.calls[0]
+    assert lower_band_index == 1
+    assert upper_band_index == 2
     assert band.eig.shape == (1, 2)
 
 

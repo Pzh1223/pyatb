@@ -11,6 +11,7 @@ INPUT_PARAMETERS
     package                        ABACUS
     fermi_energy                   9.557219691497478
     fermi_energy_unit              eV
+    sparse_format                  1
     HR_route                       data-HR-sparse_SPIN0.csr
     SR_route                       data-SR-sparse_SPIN0.csr
     rR_route                       data-rR-sparse.csr
@@ -51,7 +52,7 @@ BAND_STRUCTURE
 
 `fermi_band_num`: When `solver` is `parpack`, this sets how many bands around the Fermi level are solved at each k-point. If an explicit `band_range` is given and `fermi_band_num` is left as `0`, the width of `band_range` is used automatically.
 
-The `parpack` solver requires the Hamiltonian and overlap matrices to be loaded in sparse form, so `INPUT_PARAMETERS/sparse_format` must be set to `1`.
+The `parpack` solver requires the Hamiltonian and overlap matrices to be loaded in sparse form, so set `sparse_format 1` in the `INPUT_PARAMETERS` block before the `BAND_STRUCTURE` block.
 
 There are three ways to set k-points: k-point, k-line, and k-mesh, with the keyword `kpoint_mode` used to define the mode. The setting parameters for each mode differ, so please refer to the `INPUT` for detailed instructions. In this example, the `line` mode is used. In this mode, `kpoint_num` specifies the number of high-symmetry points, and `high_symmetry_kpoint` records the direct coordinates of these points and the number of k-points between each pair of high-symmetry points. Each row in the setting consists of four numbers, where the first three indicate the coordinates, and the last number specifies the number of k-points between the given k-point and the next high symmetry point.
 

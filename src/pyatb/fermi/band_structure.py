@@ -527,12 +527,7 @@ plt.close('all')
             raise ValueError("solver must be 'dense', 'parpack', or the compatibility alias 'sparse'.")
         normalized_solver = solver_aliases[solver_key]
         self.use_sparse_solver = normalized_solver == 'parpack'
-        if not isinstance(fermi_band_num, Integral):
-            raise ValueError(
-                f'fermi_band_num must be an integer, got {fermi_band_num!r} '
-                f'({type(fermi_band_num).__name__}).'
-            )
-        self.sparse_band_num = fermi_band_num
+        self.sparse_band_num = 0
 
         if band_range[0] == -1 and band_range[1] == -1:
             self.band_range = np.array([1, self.__tb.basis_num], dtype=int)
@@ -540,6 +535,12 @@ plt.close('all')
             self.band_range = band_range
 
         if self.use_sparse_solver:
+            if not isinstance(fermi_band_num, Integral):
+                raise ValueError(
+                    f'fermi_band_num must be an integer, got {fermi_band_num!r} '
+                    f'({type(fermi_band_num).__name__}).'
+                )
+            self.sparse_band_num = fermi_band_num
             if not getattr(self.__tb, 'HSR_is_sparse', False):
                 raise ValueError('PARPACK band solver requires HSR to be initialized with sparse_format = 1.')
             if self.sparse_band_num <= 0:
