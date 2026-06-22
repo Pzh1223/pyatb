@@ -534,6 +534,8 @@ plt.close('all')
             self.band_range = np.array([1, self.__tb.basis_num], dtype=int)
         else:
             self.band_range = band_range
+            if self.band_range[0] <= 0 or self.band_range[1] < self.band_range[0]:
+                raise ValueError("band_range must satisfy 1 <= band_range[0] <= band_range[1].")
 
         if self.use_sparse_solver:
             if not isinstance(fermi_band_num, Integral):

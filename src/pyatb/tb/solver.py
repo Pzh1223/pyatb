@@ -240,6 +240,8 @@ class solver:
 
     def _as_real_eigenvalues(self, eigenvalues):
         eigenvalues = np.asarray(eigenvalues)
+        if eigenvalues.size == 0:
+            return np.asarray([], dtype=float)
         if np.abs(eigenvalues.imag).max() > IMAG_EIGENVALUE_TOL:
             raise ValueError("Sparse solver returned eigenvalues with non-negligible imaginary parts.")
         return np.asarray(np.real(eigenvalues), dtype=float)
