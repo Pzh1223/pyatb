@@ -517,9 +517,16 @@ plt.close('all')
         timer.start('band_structure', 'calculate band structure')
 
         self.fermi_energy = fermi_energy
-        if solver not in ('dense', 'sparse'):
-            raise ValueError("solver must be 'dense' or 'sparse'.")
-        self.use_sparse_solver = solver == 'sparse'
+        solver_aliases = {
+            'dense': 'dense',
+            'sparse': 'parpack',
+            'parpack': 'parpack',
+        }
+        solver_key = str(solver).lower()
+        if solver_key not in solver_aliases:
+            raise ValueError("solver must be 'dense', 'parpack', or the compatibility alias 'sparse'.")
+        normalized_solver = solver_aliases[solver_key]
+        self.use_sparse_solver = normalized_solver == 'parpack'
         if not isinstance(fermi_band_num, Integral):
             raise ValueError(
                 f'fermi_band_num must be an integer, got {fermi_band_num!r} '
@@ -534,11 +541,11 @@ plt.close('all')
 
         if self.use_sparse_solver:
             if not getattr(self.__tb, 'HSR_is_sparse', False):
-                raise ValueError('Sparse band solver requires HSR to be initialized with sparse_format = 1.')
+                raise ValueError('PARPACK band solver requires HSR to be initialized with sparse_format = 1.')
             if self.sparse_band_num <= 0:
                 if band_range[0] == -1 and band_range[1] == -1:
                     raise ValueError(
-                        'fermi_band_num must be positive when using the sparse band solver '
+                        'fermi_band_num must be positive when using the PARPACK band solver '
                         'without an explicit band_range.'
                     )
                 self.sparse_band_num = self._get_band_range_width()
@@ -552,7 +559,7 @@ plt.close('all')
 
         if RANK == 0:
             with open(RUNNING_LOG, 'a') as f:
-                f.write(' >> eigensolver : %s\n' % ('sparse' if self.use_sparse_solver else 'dense'))
+                f.write(' >> eigensolver : %s\n' % ('parpack' if self.use_sparse_solver else 'dense'))
                 if self.use_sparse_solver:
                     f.write(' >> fermi_band_num : %d\n' % (self.sparse_band_num))
 

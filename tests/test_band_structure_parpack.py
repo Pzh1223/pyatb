@@ -103,7 +103,30 @@ class _FakeTB:
         return np.asarray(k_direct_coor, dtype=float)
 
 
-def test_band_structure_sparse_options_invoke_near_fermi_solver(tmp_path, monkeypatch):
+def test_band_structure_parpack_solver_invokes_near_fermi_solver(tmp_path, monkeypatch):
+    solver = _SparseBandSolver()
+    tb = _FakeTB(solver)
+    monkeypatch.setattr(band_structure_module, "OUTPUT_PATH", str(tmp_path))
+    monkeypatch.setattr(band_structure_module, "RUNNING_LOG", str(tmp_path / "running.log"))
+
+    band = band_structure_module.Band_Structure(tb, wf_collect=False)
+    band.calculate_band_structure(
+        fermi_energy=0.0,
+        kpoint_mode="direct",
+        band_range=np.array([1, 2], dtype=int),
+        solver="parpack",
+        fermi_band_num=2,
+        kpoint_direct_coor=np.array([[0.0, 0.0, 0.0]], dtype=float),
+    )
+
+    assert len(solver.calls) == 1
+    _, fermi_energy, band_num = solver.calls[0]
+    assert fermi_energy == 0.0
+    assert band_num == 2
+    assert band.eig.shape == (1, 2)
+
+
+def test_band_structure_sparse_solver_alias_maps_to_parpack(tmp_path, monkeypatch):
     solver = _SparseBandSolver()
     tb = _FakeTB(solver)
     monkeypatch.setattr(band_structure_module, "OUTPUT_PATH", str(tmp_path))
@@ -120,7 +143,3 @@ def test_band_structure_sparse_options_invoke_near_fermi_solver(tmp_path, monkey
     )
 
     assert len(solver.calls) == 1
-    _, fermi_energy, band_num = solver.calls[0]
-    assert fermi_energy == 0.0
-    assert band_num == 2
-    assert band.eig.shape == (1, 2)

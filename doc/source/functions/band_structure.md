@@ -32,6 +32,8 @@ LATTICE
 BAND_STRUCTURE
 {
     wf_collect                     0
+    solver                         parpack
+    fermi_band_num                 48
     kpoint_mode                    line
     kpoint_num                     5
     high_symmetry_kpoint
@@ -44,6 +46,12 @@ BAND_STRUCTURE
 ```
 
 `wf_collect`: Whether to output wave function matrix information. The wave function file stores the expansion coefficients of NAOs.
+
+`solver`: Selects the eigensolver for the band calculation. Use `dense` for full diagonalization. Use `parpack` for the Lanczos-based near-Fermi solver. The legacy keyword `sparse` is still accepted as a compatibility alias for `parpack`.
+
+`fermi_band_num`: When `solver` is `parpack`, this sets how many bands around the Fermi level are solved at each k-point. If an explicit `band_range` is given and `fermi_band_num` is left as `0`, the width of `band_range` is used automatically.
+
+The `parpack` solver requires the Hamiltonian and overlap matrices to be loaded in sparse form, so `INPUT_PARAMETERS/sparse_format` must be set to `1`.
 
 There are three ways to set k-points: k-point, k-line, and k-mesh, with the keyword `kpoint_mode` used to define the mode. The setting parameters for each mode differ, so please refer to the `INPUT` for detailed instructions. In this example, the `line` mode is used. In this mode, `kpoint_num` specifies the number of high-symmetry points, and `high_symmetry_kpoint` records the direct coordinates of these points and the number of k-points between each pair of high-symmetry points. Each row in the setting consists of four numbers, where the first three indicate the coordinates, and the last number specifies the number of k-points between the given k-point and the next high symmetry point.
 
