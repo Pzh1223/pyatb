@@ -30,8 +30,8 @@ def _diagonal_triu_matrix(diagonal):
 def test_band_structure_defaults_include_sparse_shift_invert_options():
     band_structure = INPUT["BAND_STRUCTURE"]
 
-    assert band_structure["solver"][-1] == "dense"
-    assert band_structure["fermi_band_num"][-1] == 0
+    assert band_structure["solver"] == [str, 1, "dense"]
+    assert band_structure["fermi_band_num"] == [int, 1, 0]
 
 
 def test_sparse_shift_invert_solver_matches_generalized_dense_reference(monkeypatch):

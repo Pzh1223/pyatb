@@ -26,6 +26,7 @@ class tb:
 
     def set_solver_HSR(self, HR, SR, isSparse=False):
         self.HSR_iSsparse = isSparse
+        self.HSR_is_sparse = isSparse
 
         # Check whether HR and SR are consistent
         if HR.des != 'H':
@@ -50,6 +51,7 @@ class tb:
 
     def set_solver_HSR_spin2(self, HR_up, HR_dn, SR, isSparse=False):
         self.HSR_iSsparse = isSparse
+        self.HSR_is_sparse = isSparse
 
         if self.nspin != 2:
             raise ValueError('nspin is not equal to 2, the function cannot be called')
@@ -186,4 +188,3 @@ class tb:
             self.read_atom_orb = True
 
         return None
-

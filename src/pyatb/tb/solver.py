@@ -4,6 +4,10 @@ from scipy.sparse import coo_matrix
 from scipy.sparse.linalg import eigsh
 from pyatb.interface_python import interface_python as tb_solver_
 
+
+REAL_CLOSE_TOL = 1000
+
+
 class solver:
     def __init__(self, lattice_constant, lattice_vector):
         self.tb_solver = tb_solver_(lattice_constant, lattice_vector)
@@ -250,13 +254,13 @@ class solver:
 
         if return_vectors:
             eigenvalues, eigenvectors = result
-            eigenvalues = np.real_if_close(eigenvalues, tol=1000).astype(float)
+            eigenvalues = np.real_if_close(eigenvalues, tol=REAL_CLOSE_TOL).astype(float)
             sort_index = np.argsort(eigenvalues)
             eigenvalues = eigenvalues[sort_index]
             eigenvectors = np.asarray(eigenvectors[:, sort_index], dtype=complex)
             return eigenvectors, eigenvalues
 
-        eigenvalues = np.real_if_close(result, tol=1000).astype(float)
+        eigenvalues = np.real_if_close(result, tol=REAL_CLOSE_TOL).astype(float)
         return np.sort(eigenvalues)
 
     def diago_H_near_fermi(self, k_direct_coor, fermi_energy, band_num):

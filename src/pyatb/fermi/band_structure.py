@@ -519,7 +519,7 @@ plt.close('all')
         self.sparse_band_num = int(fermi_band_num)
 
         if self.use_sparse_solver:
-            if not getattr(self.__tb, 'HSR_iSsparse', False):
+            if not getattr(self.__tb, 'HSR_is_sparse', getattr(self.__tb, 'HSR_iSsparse', False)):
                 raise ValueError('Sparse band solver requires sparse_format = 1.')
             if self.sparse_band_num <= 0:
                 if band_range[0] == -1 and band_range[1] == -1:
@@ -540,7 +540,7 @@ plt.close('all')
 
         if RANK == 0:
             with open(RUNNING_LOG, 'a') as f:
-                f.write(' >> eigensolver : %s\n' % ('sparse_shift_invert' if self.use_sparse_solver else 'dense'))
+                f.write(' >> eigensolver : %s\n' % ('sparse' if self.use_sparse_solver else 'dense'))
                 if self.use_sparse_solver:
                     f.write(' >> fermi_band_num : %d\n' % (self.sparse_band_num))
 
