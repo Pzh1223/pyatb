@@ -14,6 +14,12 @@ import time
 from scipy.sparse.linalg import eigsh
 from scipy.linalg import eigh, eigvalsh
 from scipy.sparse import csr_matrix
+try:
+    from petsc4py import PETSc
+    from slepc4py import SLEPc
+    HAS_SLEPC = True
+except ImportError:
+    HAS_SLEPC = False
 
 class Band_Structure:
     """
@@ -190,7 +196,7 @@ class Band_Structure:
 
             for ispin in range(spin_loop):
                 if kpoint_num:
-                    if getattr(self, 'solver', 'dense') in ['arpack', 'sparse']:
+                    if getattr(self, 'solver', 'dense') in ['arpack', 'sparse', 'parpack']:
                         Hk_list = self.__tb_solver[ispin].get_Hk(ik_process.k_direct_coor_local)
                         Sk_list = self.__tb_solver[ispin].get_Sk(ik_process.k_direct_coor_local)
                         
@@ -201,7 +207,7 @@ class Band_Structure:
                         for i_k in range(kpoint_num):
                             Hk = Hk_list[i_k]
                             Sk = Sk_list[i_k]
-                            # arpack (eigsh) cannot compute all eigenvalues. It requires k < N.
+                            # Lanczos solvers cannot compute all eigenvalues. They require k < N.
                             # We set the limit to N-1 for safely using the sparse solver.
                             if cal_band_num >= basis_num - 1:
                                 if self.wf_collect:
@@ -210,6 +216,60 @@ class Band_Structure:
                                     eigenvectors_list.append(vec)
                                 else:
                                     val = eigvalsh(Hk, b=Sk)
+                                    eigenvalues_list.append(val)
+                            elif getattr(self, 'solver', 'dense') == 'parpack':
+                                if not HAS_SLEPC:
+                                    raise ImportError("petsc4py and slepc4py are required to use solver='parpack'. Please install them or use solver='arpack'.")
+                                Hk_sparse = csr_matrix(Hk)
+                                Sk_sparse = csr_matrix(Sk)
+                                
+                                H_petsc = PETSc.Mat().createAIJ(size=Hk_sparse.shape, csr=(Hk_sparse.indptr, Hk_sparse.indices, Hk_sparse.data), comm=PETSc.COMM_SELF)
+                                S_petsc = PETSc.Mat().createAIJ(size=Sk_sparse.shape, csr=(Sk_sparse.indptr, Sk_sparse.indices, Sk_sparse.data), comm=PETSc.COMM_SELF)
+                                
+                                eps = SLEPc.EPS().create(comm=PETSc.COMM_SELF)
+                                eps.setOperators(H_petsc, S_petsc)
+                                eps.setProblemType(SLEPc.EPS.ProblemType.GHEP)
+                                eps.setDimensions(nev=cal_band_num)
+                                eps.setTarget(self.fermi_energy)
+                                eps.setWhichEigenpairs(SLEPc.EPS.Which.TARGET_MAGNITUDE)
+                                
+                                st = eps.getST()
+                                st.setType(SLEPc.ST.Type.SINVERT)
+                                eps.setType(SLEPc.EPS.Type.ARPACK)
+                                
+                                eps.solve()
+                                
+                                nconv = eps.getConverged()
+                                if nconv < cal_band_num:
+                                    print(f"Warning: SLEPc PARPACK only converged {nconv} eigenvalues out of requested {cal_band_num}")
+                                
+                                vals = []
+                                vecs = []
+                                if self.wf_collect:
+                                    vr, vi = H_petsc.createVecs()
+                                    
+                                for idx_eig in range(min(nconv, cal_band_num)):
+                                    v = eps.getEigenvalue(idx_eig)
+                                    vals.append(v.real)
+                                    if self.wf_collect:
+                                        eps.getEigenvector(idx_eig, vr, vi)
+                                        # Handle real and complex PETSc builds
+                                        if np.iscomplexobj(vr.getArray()):
+                                            vecs.append(vr.getArray().copy())
+                                        else:
+                                            vecs.append(vr.getArray() + 1j * vi.getArray())
+                                            
+                                val = np.array(vals)
+                                if self.wf_collect:
+                                    vec = np.array(vecs).T
+                                    idx = np.argsort(val)
+                                    val = val[idx]
+                                    vec = vec[:, idx]
+                                    eigenvalues_list.append(val)
+                                    eigenvectors_list.append(vec)
+                                else:
+                                    idx = np.argsort(val)
+                                    val = val[idx]
                                     eigenvalues_list.append(val)
                             else:
                                 Hk_sparse = csr_matrix(Hk)
@@ -221,7 +281,6 @@ class Band_Structure:
                                 eigenvalues_list.append(val)
                                 if self.wf_collect:
                                     eigenvectors_list.append(vec)
-                        
                         eigenvalues = np.array(eigenvalues_list, dtype=float)
                         if self.wf_collect:
                             eigenvectors = np.array(eigenvectors_list, dtype=complex)
