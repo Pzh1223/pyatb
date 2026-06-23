@@ -190,7 +190,7 @@ class Band_Structure:
 
             for ispin in range(spin_loop):
                 if kpoint_num:
-                    if getattr(self, 'solver', 'dense') in ['parpack', 'sparse']:
+                    if getattr(self, 'solver', 'dense') in ['arpack', 'sparse']:
                         Hk_list = self.__tb_solver[ispin].get_Hk(ik_process.k_direct_coor_local)
                         Sk_list = self.__tb_solver[ispin].get_Sk(ik_process.k_direct_coor_local)
                         
@@ -201,7 +201,7 @@ class Band_Structure:
                         for i_k in range(kpoint_num):
                             Hk = Hk_list[i_k]
                             Sk = Sk_list[i_k]
-                            # parpack (eigsh) cannot compute all eigenvalues. It requires k < N.
+                            # arpack (eigsh) cannot compute all eigenvalues. It requires k < N.
                             # We set the limit to N-1 for safely using the sparse solver.
                             if cal_band_num >= basis_num - 1:
                                 if self.wf_collect:
