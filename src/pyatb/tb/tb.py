@@ -1,6 +1,11 @@
+import warnings
 import numpy as np
 from pyatb.tb.solver import solver
 from pyatb.io import abacus_read_stru
+
+# Memory threshold (in bytes) above which dense conversion is skipped and the
+# sparse solver is used automatically.  Default: 1 GiB.
+_DENSE_MEMORY_THRESHOLD = 1 * 1024 ** 3
 
 class tb:
     def __init__(self, nspin, lattice_constant, lattice_vector, max_kpoint_num=None, **kwarg):
@@ -24,9 +29,32 @@ class tb:
             self.tb_solver_up = solver(self.lattice_constant, self.lattice_vector)
             self.tb_solver_dn = solver(self.lattice_constant, self.lattice_vector)
 
-    def set_solver_HSR(self, HR, SR, isSparse=False):
-        self.HSR_iSsparse = isSparse
+    @staticmethod
+    def _check_dense_memory(xr_matrix, name='XR'):
+        """Return True when converting *xr_matrix* to dense is safe.
 
+        Emits a warning and returns False when the resulting dense array would
+        exceed ``_DENSE_MEMORY_THRESHOLD`` bytes (default 1 GiB), so callers
+        can automatically fall back to the sparse solver.
+        """
+        rows, cols = xr_matrix.shape
+        # complex128 occupies 16 bytes per element
+        required_bytes = rows * cols * 16
+        if required_bytes > _DENSE_MEMORY_THRESHOLD:
+            warnings.warn(
+                f"Dense conversion of {name} would require "
+                f"{required_bytes / 1024**3:.2f} GiB "
+                f"(shape {xr_matrix.shape}, dtype complex128), which exceeds "
+                f"the {_DENSE_MEMORY_THRESHOLD / 1024**3:.0f} GiB threshold. "
+                "Automatically switching to the sparse solver. "
+                "Set isSparse=True explicitly to suppress this warning.",
+                ResourceWarning,
+                stacklevel=3,
+            )
+            return False
+        return True
+
+    def set_solver_HSR(self, HR, SR, isSparse=False):
         # Check whether HR and SR are consistent
         if HR.des != 'H':
             raise ValueError('HR parameter error !!')
@@ -36,6 +64,11 @@ class tb:
             raise ValueError('HR and SR mismatch !!')
         if HR.basis_num != SR.basis_num:
             raise ValueError('HR and SR mismatch !!')
+
+        if not isSparse and not self._check_dense_memory(HR.XR, 'HR'):
+            isSparse = True
+
+        self.HSR_iSsparse = isSparse
 
         if isSparse:
             self.tb_solver.set_HSR_sparse(HR.R_num, HR.R_direct_coor, HR.basis_num, HR.XR, SR.XR)
@@ -49,8 +82,6 @@ class tb:
         self.basis_num = HR.basis_num
 
     def set_solver_HSR_spin2(self, HR_up, HR_dn, SR, isSparse=False):
-        self.HSR_iSsparse = isSparse
-
         if self.nspin != 2:
             raise ValueError('nspin is not equal to 2, the function cannot be called')
 
@@ -67,6 +98,11 @@ class tb:
             raise ValueError('HR and SR mismatch !!')
         if HR_up.basis_num != SR.basis_num or HR_dn.basis_num != SR.basis_num:
             raise ValueError('HR and SR mismatch !!')
+
+        if not isSparse and not self._check_dense_memory(HR_up.XR, 'HR_up'):
+            isSparse = True
+
+        self.HSR_iSsparse = isSparse
 
         if isSparse:
             self.tb_solver_up.set_HSR_sparse(HR_up.R_num, HR_up.R_direct_coor, HR_up.basis_num, HR_up.XR, SR.XR)
@@ -87,6 +123,9 @@ class tb:
             self.HSR_iSsparse
         except NameError:
             print('set_solver_rR() must be executed after set_solver_HSR_ function() or set_solver_HSR_spin2()')
+
+        if not isSparse and not self._check_dense_memory(rR_x.XR, 'rR'):
+            isSparse = True
 
         if self.HSR_iSsparse != isSparse:
             raise ValueError('isSparse must be consistent for rR and HSR')
