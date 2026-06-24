@@ -125,14 +125,20 @@ class tb:
         try:
             self.HSR_iSsparse
         except AttributeError:
-            print('set_solver_rR() must be executed after set_solver_HSR_ function() or set_solver_HSR_spin2()')
+            raise RuntimeError(
+                'set_solver_rR() must be executed after set_solver_HSR() or set_solver_HSR_spin2()'
+            )
 
         # If the HSR solver was automatically promoted to sparse (e.g. due to
         # a memory-threshold auto-switch), silently follow the same setting so
         # the consistency check below does not raise a false error.
         if not isSparse and self.HSR_iSsparse:
             isSparse = True
-        elif not isSparse and not self._check_dense_memory(rR_x.XR, 'rR'):
+        elif not isSparse and (
+            not self._check_dense_memory(rR_x.XR, 'rR_x')
+            or not self._check_dense_memory(rR_y.XR, 'rR_y')
+            or not self._check_dense_memory(rR_z.XR, 'rR_z')
+        ):
             isSparse = True
 
         if self.HSR_iSsparse != isSparse:
