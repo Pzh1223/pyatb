@@ -30,21 +30,21 @@ class tb:
             self.tb_solver_dn = solver(self.lattice_constant, self.lattice_vector)
 
     @staticmethod
-    def _check_dense_memory(xr_matrix, name='XR'):
-        """Return True when converting *xr_matrix* to dense is safe.
+    def _check_dense_memory(XR_matrix, name='XR'):
+        """Return True when converting *XR_matrix* to dense is safe.
 
         Emits a warning and returns False when the resulting dense array would
         exceed ``_DENSE_MEMORY_THRESHOLD`` bytes (default 1 GiB), so callers
         can automatically fall back to the sparse solver.
         """
-        rows, cols = xr_matrix.shape
+        rows, cols = XR_matrix.shape
         # complex128 occupies 16 bytes per element
         required_bytes = rows * cols * 16
         if required_bytes > _DENSE_MEMORY_THRESHOLD:
             warnings.warn(
                 f"Dense conversion of {name} would require "
                 f"{required_bytes / 1024**3:.2f} GiB "
-                f"(shape {xr_matrix.shape}, dtype complex128), which exceeds "
+                f"(shape {XR_matrix.shape}, dtype complex128), which exceeds "
                 f"the {_DENSE_MEMORY_THRESHOLD / 1024**3:.0f} GiB threshold. "
                 "Automatically switching to the sparse solver. "
                 "Set isSparse=True explicitly to suppress this warning.",
@@ -124,7 +124,7 @@ class tb:
     def set_solver_rR(self, rR_x, rR_y, rR_z, isSparse=False):
         try:
             self.HSR_iSsparse
-        except NameError:
+        except AttributeError:
             print('set_solver_rR() must be executed after set_solver_HSR_ function() or set_solver_HSR_spin2()')
 
         # If the HSR solver was automatically promoted to sparse (e.g. due to
