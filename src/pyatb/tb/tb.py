@@ -99,7 +99,10 @@ class tb:
         if HR_up.basis_num != SR.basis_num or HR_dn.basis_num != SR.basis_num:
             raise ValueError('HR and SR mismatch !!')
 
-        if not isSparse and not self._check_dense_memory(HR_up.XR, 'HR_up'):
+        if not isSparse and (
+            not self._check_dense_memory(HR_up.XR, 'HR_up')
+            or not self._check_dense_memory(HR_dn.XR, 'HR_dn')
+        ):
             isSparse = True
 
         self.HSR_iSsparse = isSparse
@@ -124,7 +127,12 @@ class tb:
         except NameError:
             print('set_solver_rR() must be executed after set_solver_HSR_ function() or set_solver_HSR_spin2()')
 
-        if not isSparse and not self._check_dense_memory(rR_x.XR, 'rR'):
+        # If the HSR solver was automatically promoted to sparse (e.g. due to
+        # a memory-threshold auto-switch), silently follow the same setting so
+        # the consistency check below does not raise a false error.
+        if not isSparse and self.HSR_iSsparse:
+            isSparse = True
+        elif not isSparse and not self._check_dense_memory(rR_x.XR, 'rR'):
             isSparse = True
 
         if self.HSR_iSsparse != isSparse:
